@@ -126,7 +126,6 @@ ${schemaIdeaSql}
 ${schemaWorkshopSql}
 ${schemaForeignSql}
 `;
-console.log(schemaSql);
 
 const dataSql = `
 `;
