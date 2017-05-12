@@ -1,0 +1,14 @@
+var FB = require('fb');
+
+FB.options({'appSecret': `${process.env.FB_APP_STAGE_SECRET}`});
+
+function check(fb_userid, signedRequestValue) {
+  var signedRequest  = FB.parseSignedRequest(signedRequestValue);
+  return fb_userid == signedRequest.user_id;
+}
+
+module.exports = check;
+
+console.log(check("1514864711922034", "zC9NXHEMAXO81GLWg4fZNiKOCGjlVDybvbBosI-0aQc.eyJhbGdvcml0aG0iOiJITUFDLVNIQTI1NiIsImNvZGUiOiJBUUJRS1JDcnFLMzVfQXVxTGt4bG1ETGZ0RWYtb3d0ZFJDLVVDd01yaUtERnIxcmVqVWxKeGtpQnJ2M1M4QUVYU3BSV0JiMjBPUTNTeW1sdjU2UnJNemk0QzZ6QmlNOFhpSHFJbUZZb0tEMXJWd1dMOFVuNWFpTlJuUHQtdktFZ0tEUHFhdk1veElsUzNWUlNKRmlIR0xiYnJjYkFoT1A3VlJfU2NuV0dacE1Ib1UwNHQwYXU0blNmZ2N5eUR3NEFkbmdJRy1PaXc5Y2o2VTNsbmhHWmdRdGlTa1pkcjlHblptNzdqSFBVcHdIRm1TZUhDeG5QV2JmbTlMNnNJSWNqLW1sSnQ5djlTcGQxbmM1QzBmcVktMnNhSlhVUmNjZmVJWHRTYXVEX1B3Z0RhQXJrMXFOM0ZVdVRMZnBQNzNZaFIxUjBKejdDRW5OUjNUUnlUUFQ1STNxZiIsImlzc3VlZF9hdCI6MTQ5NDYwNTc0NywidXNlcl9pZCI6IjE1MTQ4NjQ3MTE5MjIwMzQifQ"))
+
+
