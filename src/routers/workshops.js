@@ -46,6 +46,7 @@ router.get('/workshops/:w_id', function(req, res, next) {
         err.status = 400;
         throw err;
     }
+
     res.json({
         "method": "GET",
         "action": "show()",

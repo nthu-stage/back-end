@@ -44,7 +44,7 @@ function propose(
     const proposeSQL = `
         INSERT INTO propose
         SELECT profiles.id, workshops.id
-        FROM porfiles, workshops
+        FROM profiles, workshops
         WHERE profiles.fb_userid = $1 AND workshops.id = $2;
     `;
 

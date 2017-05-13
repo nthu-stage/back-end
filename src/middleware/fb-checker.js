@@ -1,7 +1,6 @@
 var FB = require('fb');
 
 FB.options({'appSecret': `${process.env.FB_APP_STAGE_SECRET}`});
-// console.log(`${process.env.FB_APP_STAGE_SECRET}`);
 
 module.exports = function(req, res, next) {
     const fbID = req.get('fb-id');
