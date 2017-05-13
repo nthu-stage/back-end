@@ -12,9 +12,9 @@ router.use(accessController); // Allows cross-origin HTTP requests
 
 // list
 router.get('/workshops', function(req, res, next) {
-    var fb_id = req.get('fb-id');
-    if (fb_id === undefined) {
-        fb_id = null;
+    var fbID = req.get('userID');
+    if (fbID === undefined) {
+        fbID = null;
     }
     const {searchText, stateFilter} = req.query;
 
@@ -25,7 +25,7 @@ router.get('/workshops', function(req, res, next) {
         "params": req.params,
         "query": req.query,
         "body": req.body,
-        fb_id,
+        fbID,
         searchText,
         stateFilter
     })
@@ -36,9 +36,9 @@ router.get('/workshops', function(req, res, next) {
 
 // show
 router.get('/workshops/:w_id', function(req, res, next) {
-    var fb_id = req.get('fb-id');
-    if (fb_id === undefined) {
-        fb_id = null;
+    var fbID = req.get('userID');
+    if (fbID === undefined) {
+        fbID = null;
     }
     const {w_id} = req.params;
     if (!w_id) {
@@ -53,7 +53,7 @@ router.get('/workshops/:w_id', function(req, res, next) {
         "params": req.params,
         "query": req.query,
         "body": req.body,
-        fb_id,
+        fbID,
         w_id,
     })
 
@@ -66,8 +66,8 @@ router.get('/workshops/:w_id', function(req, res, next) {
 
 // propose
 router.post('/workshops', function(req, res, next) {
-    const fb_id = req.get('fb-id');
-    if (fb_id === undefined) {
+    const fbID = req.get('userID');
+    if (fbID === undefined) {
         const err = new Error('proposing a workshop need to login');
         err.status = 401;
         throw err;
@@ -86,7 +86,7 @@ router.post('/workshops', function(req, res, next) {
         "params": req.params,
         "query": req.query,
         "body": req.body,
-        fb_id,
+        fbID,
     })
 
     // [TODO]: work with model.propose().
@@ -98,9 +98,9 @@ router.post('/workshops', function(req, res, next) {
 
 // attend
 router.post('/workshops/:w_id', function(req, res, next) {
-    const fb_id = req.get('fb-id');
+    const fbID = req.get('userID');
     const {w_id} = req.params;
-    if (fb_id === undefined) {
+    if (fbID === undefined) {
         const err = new Error('attending a workshop need to login');
         err.status = 401;
         throw err;
@@ -117,7 +117,7 @@ router.post('/workshops/:w_id', function(req, res, next) {
         "params": req.params,
         "query": req.query,
         "body": req.body,
-        fb_id,
+        fbID,
         w_id,
     })
 
