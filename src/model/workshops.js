@@ -213,6 +213,6 @@ module.exports = {
     propose,
     show,
     attend,
-    unattend
+    unattend,
     list
 };

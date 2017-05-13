@@ -40,7 +40,7 @@ router.get('/workshops/:w_id', function(req, res, next) {
         throw err;
     }
 
-    workshopsModel.show(w_id, fb_id) .then(workshops => {
+    workshopsModel.show(w_id, fbID) .then(workshops => {
         res.json(workshops);
     }).catch(next);
     // res.json({
@@ -114,7 +114,7 @@ router.post('/workshops', function(req, res, next) {
     }
 
     workshopsModel.propose(
-        fb_id,
+        fbID,
         image_url,
         title,
         start_datetime,
@@ -125,8 +125,8 @@ router.post('/workshops', function(req, res, next) {
         location,
         introduction,
         content,
-        price,
-        state
+        state,
+        price
     ).then(id => {
         res.json(id);
     }).catch(next);
@@ -171,7 +171,7 @@ router.post('/workshops/:w_id', function(req, res, next) {
         throw err;
     }
 
-    workshopsModel.attend(w_id, fb_id).then(attend => {
+    workshopsModel.attend(w_id, fbID).then(attend => {
         res.json(attend);
     }).catch(next);
 
