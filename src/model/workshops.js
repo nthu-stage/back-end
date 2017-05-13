@@ -3,8 +3,38 @@ if (!global.db) {
     db = pgp(process.env.DB_URL);
 }
 
+function list(searchText, stateFilter ) {
+    var where = [];
+    if (searchText) {
+        // [TODO]:  temporarialy only search title.
+        where.push(`w.title ILIKE '%$1:value%'`);
+    }
+    if (stateFilter) {
+        where.push(`w.state = $2`);
+    }
+    // [TODO]: order by .
+    const sql = `
+SELECT
+    w.id,
+    w.image_url,
+    w.title,
+    w.start_datetime,
+    w.min_number,
+    w.max_number,
+    w.introduction,
+    w.state,
+    w.deadline,
+    COUNT(a.profile_id)
+FROM workshops AS w
+LEFT JOIN attend AS a
+ON w.id = a.workshop_id
+${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+GROUP BY w.id
+ORDER BY w.deadline DESC
+    `;
+    return db.any(sql, [searchText, stateFilter]);
+}
 
-// Propose
 function propose(
     fb_id,
     image_url,
@@ -44,9 +74,8 @@ function propose(
     const proposeSQL = `
         INSERT INTO propose
         SELECT profiles.id, workshops.id
-        FROM porfiles, workshops
-        WHERE profiles.fb_userid = $1 AND workshops.id = $2
-        RETURNING *;
+        FROM profiles, workshops
+        WHERE profiles.fb_userid = $1 AND workshops.id = $2;
     `;
 
     return db.one(workshopsSQL, {
@@ -185,4 +214,5 @@ module.exports = {
     show,
     attend,
     unattend
+    list
 };

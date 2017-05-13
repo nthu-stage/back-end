@@ -1,10 +1,9 @@
 var FB = require('fb');
 
 FB.options({'appSecret': `${process.env.FB_APP_STAGE_SECRET}`});
-// console.log(`${process.env.FB_APP_STAGE_SECRET}`);
 
 module.exports = function(req, res, next) {
-    const fbID = req.get('fb-id');
+    const fbID = req.get('userID');
     // console.log(`response header: fb-id: ${fbID}`);
     const signedRequestValue = req.get('signedRequest');
     if (fbID) {
