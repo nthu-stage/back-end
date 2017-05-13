@@ -3,6 +3,57 @@ if (!global.db) {
     db = pgp(process.env.DB_URL);
 }
 
+function list(searchText, order, fb_id=null) {
+    // [TODO]: search priority skill > goal.
+    const search = ['skill', 'goal'].map(s => {
+        return `${s} ILIKE '%$2:value%'`
+    });
+    const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$1`;
+    const user_likes_sql = `
+    SELECT * FROM likes WHERE likes.profile_id = $1
+    `;
+    const liked_sql = `
+    SELECT
+        ideas.id AS id, COUNT(user_likes.profile_id) AS liked
+    FROM ideas
+    LEFT JOIN (
+        ${user_likes_sql}
+    ) AS user_likes
+    ON user_likes.idea_id = id
+    GROUP BY ideas.id
+    `;
+    const like_number_sql = `
+    SELECT
+        ideas.id AS id, COUNt(likes.profile_id) AS like_number
+    FROM ideas
+    LEFT JOIN likes
+    ON likes.idea_id = ideas.id
+    GROUP BY ideas.id
+    ORDER BY ideas.id
+    `;
+    const sql = `
+    SELECT
+        i.id, ideas_type, skill, goal, like_number, liked
+    FROM ideas as i
+    LEFT JOIN (
+        ${liked_sql}
+    ) AS liked
+    ON liked.id = i.id
+    LEFT JOIN (
+        ${like_number_sql}
+    ) AS ln
+    ON ln.id = i.id
+    ${searchText ? 'WHERE ' + search.join(' OR ') : ''}
+    ORDER BY ${order=='hot' ? 'like_number DESC' : 'created_at DESC'}
+    `;
+
+    return db.task(t => {
+        return t.any(fb_2_pID_sql, fb_id).then(( [{id: p_id=0}={}]=[] ) => {
+            return t.any(sql, [p_id, searchText]);
+        })
+    });
+}
+
 function show (i_id, fb_id) {
 
     const profilesSQL = `
@@ -109,7 +160,6 @@ function show (i_id, fb_id) {
     return db.one(ideasSQL, [i_id, likeCount.count, editorState, likeState, availableTop]);
 }
 
-
 function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
     const ideasSQL = `
         INSERT INTO ideas ($<this:name>)
@@ -139,5 +189,6 @@ function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
 
 module.exports = {
     show,
-    comeUpWith
+    comeUpWith,
+    list
 };
