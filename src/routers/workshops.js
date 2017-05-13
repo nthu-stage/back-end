@@ -114,7 +114,7 @@ router.post('/workshops', function(req, res, next) {
     }
 
     workshopsModel.propose(
-        fb_id,
+        fbID,
         image_url,
         title,
         start_datetime,
@@ -125,35 +125,11 @@ router.post('/workshops', function(req, res, next) {
         location,
         introduction,
         content,
-        price,
-        state
+        state,
+        price
     ).then(id => {
         res.json(id);
     }).catch(next);
-
-    //[TODO]: get request body.
-    // const {mood, text} = req.body;
-    // if (!mood || !text) {
-    //     const err = new Error('Mood and text are required');
-    //         err.status = 400;
-    //     throw err;
-    // }
-
-
-    // res.json({
-    //     "method": "POST",
-    //     "action": "propose()",
-    //     "params": req.params,
-    //     "query": req.query,
-    //     "body": req.body,
-    //     fb_id,
-    // })
-
-    // [TODO]: work with model.propose().
-    // res.json(`propose: POST body: ${req.body}`);
-    // postModel.create(mood, text).then(post => {
-    //     res.json(post);
-    // }).catch(next);
 });
 
 // attend
