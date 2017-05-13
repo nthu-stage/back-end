@@ -207,6 +207,38 @@ VALUES(
     return sql;
 }
 
+
+function genDummyIdeas() {
+    const n = 8;
+    const idea_types = ['learn', 'teach'];
+    const skills=['Fire', 'Desire', 'Gun', 'Radio', 'Piano', 'Skin', 'Spot', 'Silence'];
+    const goals=['Burn', 'Death', 'Shoot', 'Sound', 'Melody', 'Touch', 'View', 'Noise'];
+    var sql = new String();
+    for (let i=0; i<n; i++) {
+       sql += `
+INSERT INTO ideas(
+    ideas_type,
+    skill,
+    goal,
+    web_url,
+    image_url,
+    created_at,
+    updated_at
+)
+VALUES(
+    '${idea_types[Math.floor(Math.random()*2)]}',
+    '${skills[i]}',
+    '${goals[i]}',
+    'some_web_url',
+    'some_image_url',
+    ${Date.now()/1000 + (i-n)*3600 + 36000},
+    ${Date.now()/1000 + (i-n)*3600 + 36000}
+);
+    `;
+    }
+    return sql;
+}
+
 function genProposeTable() {
     // all workshop need to be created by someone
     var sql = new String();
@@ -237,8 +269,45 @@ function genAttendTable() {
     for (let [p, w] of ary) {
         sql+=`
         INSERT INTO attend VALUES(
-        ${p},   -- profile_id
-        ${w}    -- workshop_id
+        ${p},
+        ${w}
+        );
+        `;
+    }
+    return sql;
+}
+
+function genLikeTable() {
+    // one profile could attend multiple workshop
+    var sql = new String();
+    const ary = [
+        [1, 1], [1, 3], [1, 5], [1, 7],
+        [2, 2], [2, 4], [2, 6], [2, 8],
+        [3, 2], [3, 3], [3, 4],
+        [4, 1], [4, 5],
+        [5, 2], [5, 5], [5, 7],
+        [6, 1], [6, 4], [6, 8],
+        [7, 3], [7, 6], [7, 5],
+    ];
+    for (let [p, i] of ary) {
+        sql+=`
+        INSERT INTO likes VALUES(
+        ${p},
+        ${i}
+        );
+        `;
+    }
+    return sql;
+}
+
+function genComeUpWithTable() {
+    // all workshop need to be created by someone
+    var sql = new String();
+    for (let i=0; i<8; i++) {
+        sql+=`
+        INSERT INTO come_ups VALUES(
+        ${Math.floor(Math.random()*7)},
+        ${i}
         );
         `;
     }
@@ -248,8 +317,11 @@ function genAttendTable() {
 const dataSql = `
 ${genDummyProfiles()}
 ${genDummyWorkshops()}
+${genDummyIdeas()}
 ${genProposeTable()}
 ${genAttendTable()}
+${genLikeTable()}
+${genComeUpWithTable()}
 `;
 
 db.none(schemaSql).then(() => {
