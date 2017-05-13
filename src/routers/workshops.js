@@ -12,26 +12,16 @@ router.use(accessController); // Allows cross-origin HTTP requests
 
 // list
 router.get('/workshops', function(req, res, next) {
-    var fbID = req.get('userID');
-    if (fbID === undefined) {
-        fbID = null;
-    }
     const {searchText, stateFilter} = req.query;
 
-    // [TODO]: work with model.list().
-    res.json({
-        "method": "GET",
-        "action": "list()",
-        "params": req.params,
-        "query": req.query,
-        "body": req.body,
-        fbID,
-        searchText,
-        stateFilter
-    })
-    // model.list(searchText, stateFilter).then(posts => {
-    //     res.json(posts);
-    // }).catch(next);
+    workshopsModel.list(searchText, stateFilter).then(workshops => {
+        for (let w of workshops) {
+            // change property's name
+            w.attendees_number = w.count;
+            delete w.count;
+        }
+        res.json(workshops);
+    }).catch(next);
 });
 
 // show
