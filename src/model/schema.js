@@ -172,6 +172,7 @@ function genDummyWorkshops() {
     const n = 5;
     const titles=['React', 'Git', 'Archi', 'Linux', 'Stage'];
     const locations=['London','Tokyo','Rome','Taipei','Hsinchu'];
+    const states=[ 'judging', 'judge_fail', 'investigation', 'reached', 'unreached', 'finish' ];
     var sql = new String();
     for (let i=0; i<n; i++) {
        sql += `
@@ -196,7 +197,7 @@ VALUES(
     ${Math.floor(Math.random() * 30)+10},
     ${Date.now()/1000 + (i-n)*3600 + 36000},
     '${locations[i]}',
-    'judging',
+    '${states[i]}',
     ${Math.random() * 100},
     ${Date.now()/1000},
     ${Date.now()/1000}
