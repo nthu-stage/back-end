@@ -12,7 +12,6 @@ function list(searchText, stateFilter ) {
     if (stateFilter) {
         where.push(`w.state = $2`);
     }
-    // [TODO]: order by .
     const sql = `
 SELECT
     w.id,
@@ -30,7 +29,7 @@ LEFT JOIN attend AS a
 ON w.id = a.workshop_id
 ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
 GROUP BY w.id
-ORDER BY w.deadline DESC
+ORDER BY w.deadline ASC
     `;
     return db.any(sql, [searchText, stateFilter]);
 }
@@ -213,6 +212,6 @@ module.exports = {
     propose,
     show,
     attend,
-    unattend
+    unattend,
     list
 };
