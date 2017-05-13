@@ -23,7 +23,7 @@ SELECT
     w.introduction,
     w.state,
     w.deadline,
-    COUNT(a.profile_id)
+    COUNT(a.profile_id) AS attendees_number
 FROM workshops AS w
 LEFT JOIN attend AS a
 ON w.id = a.workshop_id

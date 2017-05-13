@@ -15,11 +15,6 @@ router.get('/workshops', function(req, res, next) {
     const {searchText, stateFilter} = req.query;
 
     workshopsModel.list(searchText, stateFilter).then(workshops => {
-        for (let w of workshops) {
-            // change property's name
-            w.attendees_number = w.count;
-            delete w.count;
-        }
         res.json(workshops);
     }).catch(next);
 });
