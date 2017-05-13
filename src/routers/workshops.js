@@ -2,6 +2,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const accessController = require('../middleware/access-controller.js');
 
+
+const profilesModel = require('../model/profiles.js');
+const ideasModel = require('../model/ideas.js');
 const workshopsModel = require('../model/workshops.js');
 
 const router = express.Router();
@@ -37,15 +40,28 @@ router.get('/workshops/:w_id', function(req, res, next) {
         throw err;
     }
 
-    res.json({
-        "method": "GET",
-        "action": "show()",
-        "params": req.params,
-        "query": req.query,
-        "body": req.body,
-        fbID,
-        w_id,
-    })
+    workshopsModel.show(w_id, fb_id) .then(workshops => {
+        res.json(workshops);
+    }).catch(next);
+    // res.json({
+    //     "method": "GET",
+    //     "action": "show()",
+    //     "params": req.params,
+    //     "query": req.query,
+    //     "body": req.body,
+    //     fb_id,
+    //     w_id,
+    // })
+
+    // res.json({
+    //     "method": "GET",
+    //     "action": "show()",
+    //     "params": req.params,
+    //     "query": req.query,
+    //     "body": req.body,
+    //     fbID,
+    //     w_id,
+    // })
 
     // [TODO]: work with workshopsModel.show().
     // workshopsModel.show(w_id).then(workshop => {
@@ -62,6 +78,59 @@ router.post('/workshops', function(req, res, next) {
         err.status = 401;
         throw err;
     }
+
+    const {
+        image_url,
+        title,
+        start_datetime,
+        end_datetime,
+        min_number,
+        max_number,
+        deadline,
+        location,
+        introduction,
+        content,
+        state,
+        price,
+    } = req.body;
+
+    if(
+        !image_url ||
+        !title ||
+        !start_datetime ||
+        !end_datetime ||
+        !min_number ||
+        !max_number ||
+        !deadline ||
+        !location ||
+        !introduction ||
+        !content ||
+        !state ||
+        !price
+    ) {
+        const err = new Error('Workshops Information are required');
+            err.status = 400;
+        throw err;
+    }
+
+    workshopsModel.propose(
+        fb_id,
+        image_url,
+        title,
+        start_datetime,
+        end_datetime,
+        min_number,
+        max_number,
+        deadline,
+        location,
+        introduction,
+        content,
+        price,
+        state
+    ).then(id => {
+        res.json(id);
+    }).catch(next);
+
     //[TODO]: get request body.
     // const {mood, text} = req.body;
     // if (!mood || !text) {
@@ -70,17 +139,18 @@ router.post('/workshops', function(req, res, next) {
     //     throw err;
     // }
 
-    res.json({
-        "method": "POST",
-        "action": "propose()",
-        "params": req.params,
-        "query": req.query,
-        "body": req.body,
-        fbID,
-    })
+
+    // res.json({
+    //     "method": "POST",
+    //     "action": "propose()",
+    //     "params": req.params,
+    //     "query": req.query,
+    //     "body": req.body,
+    //     fb_id,
+    // })
 
     // [TODO]: work with model.propose().
-    res.json(`propose: POST body: ${req.body}`);
+    // res.json(`propose: POST body: ${req.body}`);
     // postModel.create(mood, text).then(post => {
     //     res.json(post);
     // }).catch(next);
@@ -101,15 +171,20 @@ router.post('/workshops/:w_id', function(req, res, next) {
         throw err;
     }
 
-    res.json({
-        "method": "POST",
-        "action": "attend()",
-        "params": req.params,
-        "query": req.query,
-        "body": req.body,
-        fbID,
-        w_id,
-    })
+    workshopsModel.attend(w_id, fb_id).then(attend => {
+        res.json(attend);
+    }).catch(next);
+
+    // res.json({
+    //     "method": "POST",
+    //     "action": "attend()",
+    //     "params": req.params,
+    //     "query": req.query,
+    //     "body": req.body,
+    //     fb_id,
+    //     w_id,
+    // })
+
 
     // [TODO]: work with workshopsModel.attend().
     // voteModel.create(id, mood).then(post => {

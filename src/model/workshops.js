@@ -48,9 +48,7 @@ function propose(
     introduction,
     content,
     state,
-    price,
-    created_at,
-    updated_at
+    price
 ){
     const workshopsSQL = `
         INSERT INTO workshops ($<this:name>)
@@ -66,12 +64,12 @@ function propose(
             $<introduction>,
             $<content>,
             $<state>,
-            $<price>,
-            extract(epoch from now()),
-            extract(epoch from now())
+            $<price>
         )
-        RETURNING id;
+        RETURNING workshops.id;
     `;
+
+    // extract(epoch from now())
 
     const proposeSQL = `
         INSERT INTO propose
@@ -93,22 +91,29 @@ function propose(
         content,
         state,
         price,
-        created_at,
-        updated_at
     }).then(workshops => {
         db.none(proposeSQL, [fb_id, workshops.id]);
+        return workshops.id;
     }).catch(error => {
         console.log('ERROR:', error); // print the error;
     });
 }
 
 
-function show(workshops_id, fb_userid = null) {
 
-    const porfilesSOL = `
+// Show
+function show(w_id, fb_id = null) {
+
+    const profilesSQL = `
         SELECT profiles.id
         FROM profiles
         WHERE $1 = profiles.fb_userid;
+    `;
+
+    const attend_countSQL = `
+        SELECT count(a.profile_id)
+        FROM attend as a
+        WHERE a.workshop_id = $1 AND a.profile_id = $2;
     `;
 
     const workshopsSQL = `
@@ -128,47 +133,86 @@ function show(workshops_id, fb_userid = null) {
             w.price,
             w.created_at,
             w.updated_at,
-            w.bool_and($2 = a.profile_id)
+            bool_and($2 = 0)
         FROM workshops as w
-        INNER JOIN attend as a
-        on attend.workshop_id = workshops_id;
+        WHERE w.id = $1
+    `;
+
+    const ori_workshopsSQL = `
+        SELECT *, $2
+        FROM workshops
+        WHERE workshops.id = $1;
     `;
 
     if(fb_userid !== NULL) {
-        db.one(profilesSQL, fb_userid)
+        return db.one(profilesSQL, fb_id)
         .then(profiles => {
-            db.one(workshopsSQL, [workshops_id, profiles.id]);
+            let count = db.one(attend_countSQL, [w_id, profiles.id]);
+            return db.one(workshopsSQL, [w_id, count]);
         }).catch(error => {
             console.log('ERROR:', error); // print the error;
         });
     }
+    else {
+        return db.one(ori_workshopsSQL, [w_id, false]);
+    }
 }
 
 
-// const workshopsSQL = `
-//     SELECT
-//         w.id,
-//         w.image_url,
-//         w.title,
-//         w.start_datetime,
-//         w.end_datetime,
-//         w.min_number,
-//         w.max_number,
-//         w.deadline,
-//         w.location,
-//         w.introduction,
-//         w.content,
-//         w.state,
-//         w.price,
-//         w.created_at,
-//         w.updated_at,
-//         w.bool_and($2 = a.profile_id)
-//     FROM workshops as w, attend as a
-//     WHERE w.id = a.workshop_id;
-// `;
+
+// Attend
+function attend(w_id, fb_id) {
+
+    const profilesSQL = `
+        SELECT profiles.id
+        FROM profiles
+        WHERE $1 = profiles.fb_userid;
+    `;
+
+    const attendSQL = `
+        INSERT INTO attend
+        VALUES ($2, $1)
+        RETURNING *;
+    `;
+
+    let profiles = db.one(profilesSQL, fb_id)
+
+    return db.one(attendSQL, [w_id, profiles.id])
+    .then(attend => {
+        return true;
+    }).catch(error => {
+        console.log('ERROR:', error); // print the error;
+        return false;
+    });
+}
+
+
+
+// Unattend
+function unattend(w_id, fb_id) {
+    const unattendSQL = `
+        DELETE FROM attend
+        WHERE attend.profile_id = $2
+        AND attend.workshop_id = $1;
+    `;
+
+    let profiles = db.one(profilesSQL, fb_id)
+
+    return db.one(unattendSQL, [w_id, profiles.id])
+    .then(unattend => {
+        return true;
+    }).catch(error => {
+        console.log('ERROR:', error); // print the error;
+        return false;
+    });
+}
+
 
 
 module.exports = {
-    list,
-    propose
+    propose,
+    show,
+    attend,
+    unattend
+    list
 };
