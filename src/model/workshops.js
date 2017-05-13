@@ -14,23 +14,23 @@ function list(searchText, stateFilter ) {
     }
     // [TODO]: order by .
     const sql = `
-SELECT
-    w.id,
-    w.image_url,
-    w.title,
-    w.start_datetime,
-    w.min_number,
-    w.max_number,
-    w.introduction,
-    w.state,
-    w.deadline,
-    COUNT(a.profile_id)
-FROM workshops AS w
-LEFT JOIN attend AS a
-ON w.id = a.workshop_id
-${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-GROUP BY w.id
-ORDER BY w.deadline DESC
+        SELECT
+            w.id,
+            w.image_url,
+            w.title,
+            w.start_datetime,
+            w.min_number,
+            w.max_number,
+            w.introduction,
+            w.state,
+            w.deadline,
+            COUNT(a.profile_id)
+        FROM workshops AS w
+        LEFT JOIN attend AS a
+        ON w.id = a.workshop_id
+        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+        GROUP BY w.id
+        ORDER BY w.deadline DESC
     `;
     return db.any(sql, [searchText, stateFilter]);
 }

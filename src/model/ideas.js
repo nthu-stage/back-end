@@ -108,3 +108,36 @@ function show (i_id, fb_id) {
 
     return db.one(ideasSQL, [i_id, likeCount.count, editorState, likeState, availableTop]);
 }
+
+
+function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
+    const ideasSQL = `
+        INSERT INTO ideas ($<this:name>)
+        VALUES (
+            $<idea_type>,
+            $<skill>,
+            $<goal>,
+            $<web_url>,
+            $<image_url>
+        )
+        RETURNING id;
+    `;
+
+    const comeUpWithSQL = `
+        INSERT INTO come_up_with
+        SELECT profiles.id, ideas.id
+        FROM profiles, ideas
+        WHERE $1 = profiles.fb_userid AND $2 = ideas.id;
+    `;
+
+    return db.one(ideasSQL,{idea_type, skill, goal, web_url, image_url})
+    .then(ideas => {
+        db.one(comeUpWithSQL, [fb_id, ideas.id])
+        return ideas.id;
+    })
+}
+
+module.exports = {
+    show,
+    comUpWith
+};
