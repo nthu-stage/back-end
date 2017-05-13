@@ -139,5 +139,5 @@ function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
 
 module.exports = {
     show,
-    comUpWith
+    comeUpWith
 };
