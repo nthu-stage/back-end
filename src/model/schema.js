@@ -127,11 +127,140 @@ ${schemaWorkshopSql}
 ${schemaForeignSql}
 `;
 
+function genRandomAvaiTime() {
+    var avai_time = new Array(21);
+    for (let i=0; i<21; i++) {
+        avai_time[i] = Math.random() < 0.5;
+    }
+    return avai_time;
+}
+
+function genDummyProfiles() {
+    const n = 7;
+    const names = ['Apple', 'Bike', 'Car', 'Dog', 'Ear', 'Race', 'Rust'];
+    var sql = new String();
+    for (let i=0; i<n; i++) {
+       sql += `
+INSERT INTO profiles(
+    name,
+    email,
+    fb_userid,
+    photo,
+    authority,
+    available_time,
+    last_login_time,
+    created_at,
+    updated_at
+)
+VALUES(
+    '${names[i]}',
+    '${names[i]}@domain.com',
+    '${Math.floor(Math.random() * 1000000)}',
+    '${names[i]}_photo_url',
+    'user',
+    '${genRandomAvaiTime()}',
+    ${Date.now()/1000 + (i-n)*3600},
+    ${Date.now()/1000 + (i-n)*3600},
+    ${Date.now()/1000 + (i-n)*3600}
+);
+    `;
+    }
+    return sql;
+}
+
+function genDummyWorkshops() {
+    const n = 5;
+    const titles=['React', 'Git', 'Archi', 'Linux', 'Stage'];
+    const locations=['London','Tokyo','Rome','Taipei','Hsinchu'];
+    var sql = new String();
+    for (let i=0; i<n; i++) {
+       sql += `
+INSERT INTO workshops(
+    title,
+    start_datetime,
+    end_datetime,
+    min_number,
+    max_number,
+    deadline,
+    location,
+    state,
+    price,
+    created_at,
+    updated_at
+)
+VALUES(
+    '${titles[i]}',
+    ${Date.now()/1000 + (i-n)*3600 + 72000},
+    ${Date.now()/1000 + (i-n)*3600 + 90000},
+    ${Math.floor(Math.random() * 10)},
+    ${Math.floor(Math.random() * 30)+10},
+    ${Date.now()/1000 + (i-n)*3600 + 36000},
+    '${locations[i]}',
+    'judging',
+    ${Math.random() * 100},
+    ${Date.now()/1000},
+    ${Date.now()/1000}
+);
+    `;
+    }
+    return sql;
+}
+
+function genProposeTable() {
+    // all workshop need to be created by someone
+    var sql = new String();
+    const ps = [5, 1, 2, 6, 4];
+    for (let i=0; i<5; i++) {
+        sql+=`
+        INSERT INTO propose VALUES(
+        ${ps[i]},   -- profile_id
+        ${i+1}      -- workshop_id
+        );
+        `;
+    }
+    return sql;
+}
+
+function genAttendTable() {
+    // one profile could attend multiple workshop
+    var sql = new String();
+    const ary = [
+        [1, 1], [1, 3], [1, 5],
+        [2, 2], [2, 4],
+        [3, 2], [3, 3], [3, 4],
+        [4, 1], [4, 5],
+        [5, 2], [5, 5],
+        [6, 1], [6, 3], [6, 4],
+        [7, 2], [7, 4], [7, 5],
+    ];
+    for (let [p, w] of ary) {
+        sql+=`
+        INSERT INTO attend VALUES(
+        ${p},   -- profile_id
+        ${w}    -- workshop_id
+        );
+        `;
+    }
+    return sql;
+}
+
 const dataSql = `
+${genDummyProfiles()}
+${genDummyWorkshops()}
+${genProposeTable()}
+${genAttendTable()}
 `;
 
 db.none(schemaSql).then(() => {
     console.log('Schema created');
+    db.none(dataSql).then(() => {
+        console.log('Data populated');
+        pgp.end();
+    }).catch(err => {
+        console.log('Error populated data', err);
+        pgp.end();
+    });
 }).catch(err => {
     console.log('Error creating schema', err);
+    pgp.end();
 });
