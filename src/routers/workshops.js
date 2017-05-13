@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const accessController = require('../middleware/access-controller.js');
 
-const model = require('../model/workshops.js');
+const workshopsModel = require('../model/workshops.js');
 
 const router = express.Router();
 
@@ -57,8 +57,8 @@ router.get('/workshops/:w_id', function(req, res, next) {
         w_id,
     })
 
-    // [TODO]: work with model.show().
-    // model.show(w_id).then(workshop => {
+    // [TODO]: work with workshopsModel.show().
+    // workshopsModel.show(w_id).then(workshop => {
     //   res.json(workshop);
     // }).catch(next);
 })
@@ -121,7 +121,7 @@ router.post('/workshops/:w_id', function(req, res, next) {
         w_id,
     })
 
-    // [TODO]: work with model.attend().
+    // [TODO]: work with workshopsModel.attend().
     // voteModel.create(id, mood).then(post => {
     //     res.json(post);
     // }).catch(next);
