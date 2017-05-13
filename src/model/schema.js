@@ -15,16 +15,16 @@ CREATE TYPE authority AS ENUM (
     'admin'
 );
 CREATE TABLE profiles (
-    id              serial PRIMARY KEY NOT NULL,
-    name            text NOT NULL,
-    email           text NOT NULL,
-    fb_userid       text NOT NULL,
-    photo           text NOT NULL,
-    authority       authority NOT NULL,
-    available_time  text NOT NULL,
-    last_login_time bigint NOT NULL DEFAULT (extract(epoch from now())),
-    created_at      bigint NOT NULL DEFAULT (extract(epoch from now())),
-    updated_at      bigint NOT NULL DEFAULT (extract(epoch from now()))
+    id                  serial PRIMARY KEY NOT NULL,
+    name                text NOT NULL,
+    email               text NOT NULL,
+    fb_userid           text NOT NULL,
+    picture_url         text NOT NULL,
+    authority           authority NOT NULL,
+    available_time      text NOT NULL,
+    last_login_datetime bigint NOT NULL DEFAULT (extract(epoch from now())),
+    created_at          bigint NOT NULL DEFAULT (extract(epoch from now())),
+    updated_at          bigint NOT NULL DEFAULT (extract(epoch from now()))
 );
 CREATE INDEX profiles_idx_created_at ON profiles USING btree(created_at);
 CREATE INDEX profiles_idx_updated_at ON profiles USING btree(updated_at);
@@ -146,10 +146,10 @@ INSERT INTO profiles(
     name,
     email,
     fb_userid,
-    photo,
+    picture_url,
     authority,
     available_time,
-    last_login_time,
+    last_login_datetime,
     created_at,
     updated_at
 )

@@ -23,7 +23,7 @@ SELECT
     w.introduction,
     w.state,
     w.deadline,
-    COUNT(a.profile_id)
+    COUNT(a.profile_id) AS attendees_number
 FROM workshops AS w
 LEFT JOIN attend AS a
 ON w.id = a.workshop_id
@@ -68,8 +68,6 @@ function propose(
         RETURNING workshops.id;
     `;
 
-    // extract(epoch from now())
-
     const proposeSQL = `
         INSERT INTO propose
         SELECT profiles.id, workshops.id
@@ -101,7 +99,7 @@ function propose(
 
 
 // Show
-function show(w_id, fb_id = null) {
+function show(w_id, fb_id) {
 
     const profilesSQL = `
         SELECT profiles.id
@@ -132,9 +130,25 @@ function show(w_id, fb_id = null) {
             w.price,
             w.created_at,
             w.updated_at,
-            bool_and($2 = 0)
+            bool_and($2 != 0)
         FROM workshops as w
         WHERE w.id = $1
+        GROUP BY
+            w.id,
+            w.image_url,
+            w.title,
+            w.start_datetime,
+            w.end_datetime,
+            w.min_number,
+            w.max_number,
+            w.deadline,
+            w.location,
+            w.introduction,
+            w.content,
+            w.state,
+            w.price,
+            w.created_at,
+            w.updated_at;
     `;
 
     const ori_workshopsSQL = `
@@ -143,11 +157,15 @@ function show(w_id, fb_id = null) {
         WHERE workshops.id = $1;
     `;
 
-    if(fb_userid !== NULL) {
+    if(fb_id !== null) {
         return db.one(profilesSQL, fb_id)
         .then(profiles => {
-            let count = db.one(attend_countSQL, [w_id, profiles.id]);
-            return db.one(workshopsSQL, [w_id, count]);
+            return db.one(attend_countSQL, [w_id, profiles.id])
+            .then(attendCount => {
+                return db.one(workshopsSQL, [w_id, attendCount.count]);
+            }).catch(error => {
+                console.log('ERROR:', error); // print the error;
+            });
         }).catch(error => {
             console.log('ERROR:', error); // print the error;
         });
@@ -174,11 +192,15 @@ function attend(w_id, fb_id) {
         RETURNING *;
     `;
 
-    let profiles = db.one(profilesSQL, fb_id)
-
-    return db.one(attendSQL, [w_id, profiles.id])
-    .then(attend => {
-        return true;
+    return db.one(profilesSQL, fb_id)
+    .then(profiles => {
+        return db.one(attendSQL, [w_id, profiles.id])
+        .then(attend => {
+            return true;
+        }).catch(error => {
+            console.log('ERROR:', error); // print the error;
+            return false;
+        });
     }).catch(error => {
         console.log('ERROR:', error); // print the error;
         return false;
@@ -195,11 +217,15 @@ function unattend(w_id, fb_id) {
         AND attend.workshop_id = $1;
     `;
 
-    let profiles = db.one(profilesSQL, fb_id)
-
-    return db.one(unattendSQL, [w_id, profiles.id])
-    .then(unattend => {
-        return true;
+    return db.one(profilesSQL, fb_id)
+    .then(profiles => {
+        return db.one(unattendSQL, [w_id, profiles.id])
+        .then(unattend => {
+            return true;
+        }).catch(error => {
+            console.log('ERROR:', error); // print the error;
+            return false;
+        });
     }).catch(error => {
         console.log('ERROR:', error); // print the error;
         return false;

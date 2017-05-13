@@ -2,9 +2,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const accessController = require('../middleware/access-controller.js');
 
-
-const profilesModel = require('../model/profiles.js');
-const ideasModel = require('../model/ideas.js');
 const workshopsModel = require('../model/workshops.js');
 
 const router = express.Router();
@@ -18,11 +15,6 @@ router.get('/workshops', function(req, res, next) {
     const {searchText, stateFilter} = req.query;
 
     workshopsModel.list(searchText, stateFilter).then(workshops => {
-        for (let w of workshops) {
-            // change property's name
-            w.attendees_number = w.count;
-            delete w.count;
-        }
         res.json(workshops);
     }).catch(next);
 });
@@ -40,7 +32,7 @@ router.get('/workshops/:w_id', function(req, res, next) {
         throw err;
     }
 
-    workshopsModel.show(w_id, fb_id) .then(workshops => {
+    workshopsModel.show(w_id, fbID) .then(workshops => {
         res.json(workshops);
     }).catch(next);
     // res.json({
@@ -117,11 +109,11 @@ router.post('/workshops', function(req, res, next) {
         fbID,
         image_url,
         title,
-        start_datetime,
-        end_datetime,
+        new Date(start_datetime).getTime(),
+        new Date(end_datetime).getTime(),
         min_number,
         max_number,
-        deadline,
+        new Date(deadline).getTime(),
         location,
         introduction,
         content,
@@ -147,8 +139,8 @@ router.post('/workshops/:w_id', function(req, res, next) {
         throw err;
     }
 
-    workshopsModel.attend(w_id, fb_id).then(attend => {
-        res.json(attend);
+    workshopsModel.attend(w_id, fbID).then(attendState => {
+        res.json(attendState);
     }).catch(next);
 
     // res.json({
