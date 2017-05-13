@@ -57,8 +57,8 @@ CREATE TABLE workshops (
     content             text NOT NULL DEFAULT '',
     state               state NOT NULL,
     price               integer NOT NULL DEFAULT 0,
-    create_at           bigint NOT NULL DEFAULT (extract(epoch from now())),
-    update_at           bigint NOT NULL DEFAULT (extract(epoch from now()))
+    created_at          bigint NOT NULL DEFAULT (extract(epoch from now())),
+    updated_at          bigint NOT NULL DEFAULT (extract(epoch from now()))
 );
 `;
 
@@ -78,7 +78,7 @@ CREATE TYPE ideas_type AS ENUM (
 );
 CREATE TABLE ideas (
     id         serial PRIMARY KEY NOT NULL,
-    ideas_type  ideas_type NOT NULL,
+    ideas_type ideas_type NOT NULL,
     skill      text NOT NULL,
     goal       text NOT NULL,
     web_url    text,
