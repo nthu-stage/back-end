@@ -34,7 +34,7 @@ function list(searchText, order, fb_id=null) {
     `;
     const sql = `
     SELECT
-        i.id AS i_id, ideas_type, skill, goal, like_number, liked
+        i.id AS i_id, idea_type, skill, goal, like_number, liked
     FROM ideas as i
     LEFT JOIN (
         ${liked_sql}
@@ -74,7 +74,7 @@ function show (i_id, fb_id) {
     const ideasSQL = `
         SELECT
             i.id as i_id,
-            i.ideas_type as idea_type,
+            i.idea_type as idea_type,
             i.skill,
             i.goal,
             count(l1.profile_id) as like_number,
@@ -93,7 +93,7 @@ function show (i_id, fb_id) {
         on l1.idea_id = $1
         GROUP BY
             i.id,
-            i.ideas_type,
+            i.idea_type,
             i.skill,
             i.goal,
             i.web_url,
@@ -147,11 +147,11 @@ function show (i_id, fb_id) {
     })
 }
 
-function comeUpWith (fb_id, ideas_type, skill, goal, web_url, image_url) {
+function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
     const ideasSQL = `
         INSERT INTO ideas ($<this:name>)
         VALUES (
-            $<ideas_type>,
+            $<idea_type>,
             $<skill>,
             $<goal>,
             $<web_url>,
@@ -167,7 +167,7 @@ function comeUpWith (fb_id, ideas_type, skill, goal, web_url, image_url) {
         WHERE $1 = profiles.fb_userid AND $2 = ideas.id;
     `;
 
-    return db.one(ideasSQL,{ideas_type, skill, goal, web_url, image_url})
+    return db.one(ideasSQL,{idea_type, skill, goal, web_url, image_url})
     .then(ideas => {
         db.one(comeUpWithSQL, [fb_id, ideas.id])
         return ideas.id;

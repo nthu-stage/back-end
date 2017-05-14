@@ -36,33 +36,31 @@ ORDER BY w.deadline ASC
 
 function propose(
     fb_id,
-    image_url,
-    title,
+    img_url,
     start_datetime,
     end_datetime,
+    location,
+    content,
+    title,
     min_number,
     max_number,
     deadline,
-    location,
     introduction,
-    content,
-    state,
     price
 ){
     const workshopsSQL = `
         INSERT INTO workshops ($<this:name>)
         VALUES (
             $<image_url>,
-            $<title>,
             $<start_datetime>,
             $<end_datetime>,
+            $<location>,
+            $<content>,
+            $<title>,
             $<min_number>,
             $<max_number>,
             $<deadline>,
-            $<location>,
             $<introduction>,
-            $<content>,
-            $<state>,
             $<price>
         )
         RETURNING workshops.id;
@@ -76,18 +74,17 @@ function propose(
     `;
 
     return db.one(workshopsSQL, {
-        image_url,
-        title,
+        img_url,
         start_datetime,
         end_datetime,
+        location,
+        content,
+        title,
         min_number,
         max_number,
         deadline,
-        location,
         introduction,
-        content,
-        state,
-        price,
+        price
     }).then(workshops => {
         db.none(proposeSQL, [fb_id, workshops.id]);
         return workshops.id;
@@ -115,40 +112,37 @@ function show(w_id, fb_id) {
 
     const workshopsSQL = `
         SELECT
-            w.id,
             w.image_url,
-            w.title,
             w.start_datetime,
             w.end_datetime,
-            w.min_number,
+            w.location,
+            w.content,
+            w.title,
             w.max_number,
             w.deadline,
-            w.location,
+            w.pre_deadline,
             w.introduction,
-            w.content,
-            w.state,
             w.price,
-            w.created_at,
-            w.updated_at,
-            bool_and($2 != 0)
+            w.phase,
+            profiles.name,
+            bool_and($2 != 0) as attended
         FROM workshops as w
-        WHERE w.id = $1
+        INNER JOIN propose
+        on w.id = $1 AND propose.workshop_id = $1
         GROUP BY
-            w.id,
             w.image_url,
-            w.title,
             w.start_datetime,
             w.end_datetime,
-            w.min_number,
+            w.location,
+            w.content,
+            w.title,
             w.max_number,
             w.deadline,
-            w.location,
+            w.pre_deadline,
             w.introduction,
-            w.content,
-            w.state,
             w.price,
-            w.created_at,
-            w.updated_at;
+            w.phase,
+            profiles.name,
     `;
 
     const ori_workshopsSQL = `
@@ -192,18 +186,22 @@ function attend(w_id, fb_id) {
         RETURNING *;
     `;
 
+    const state = `
+        SELECT bool_or(attend.profiles_id = $2) as attended
+        FROM attend
+        WHERE attend.workshop_id = $1;
+    `;
+
     return db.one(profilesSQL, fb_id)
     .then(profiles => {
         return db.one(attendSQL, [w_id, profiles.id])
         .then(attend => {
-            return true;
+            return db.one(stateSQL, [w_id, profiles.id]);
         }).catch(error => {
             console.log('ERROR:', error); // print the error;
-            return false;
         });
     }).catch(error => {
         console.log('ERROR:', error); // print the error;
-        return false;
     });
 }
 
