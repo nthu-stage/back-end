@@ -138,6 +138,7 @@ function genRandomAvaiTime() {
 function genDummyProfiles() {
     const n = 7;
     const names = ['Apple', 'Bike', 'Car', 'Dog', 'Ear', 'Race', 'Rust'];
+    const fb_suerids = ['1514864711922034', '1833867746937550', '1234', '9527', '1036', '9487', '9062']
     var sql = new String();
     for (let i=0; i<n; i++) {
        sql += `
@@ -155,7 +156,7 @@ INSERT INTO profiles(
 VALUES(
     '${names[i]}',
     '${names[i]}@domain.com',
-    '${Math.floor(Math.random() * 1000000)}',
+    '${fb_suerids[i]}',
     '${names[i]}_photo_url',
     'user',
     '${genRandomAvaiTime()}',
@@ -257,13 +258,13 @@ function genProposeTable() {
 function genAttendTable() {
     // one profile could attend multiple workshop
     var sql = new String();
+    // profile 2 attend nothing
+    // noeone want to attend workshop 3
     const ary = [
-        [1, 1], [1, 3], [1, 5],
-        [2, 2], [2, 4],
-        [3, 2], [3, 3], [3, 4],
+        [1, 1], [1, 5], [1, 6],
+        [3, 2], [3, 4], [3, 5],
         [4, 1], [4, 5],
-        [5, 2], [5, 5],
-        [6, 1], [6, 3], [6, 4],
+        [6, 1], [6, 2], [6, 4],
         [7, 2], [7, 4], [7, 5],
     ];
     for (let [p, w] of ary) {
@@ -280,12 +281,13 @@ function genAttendTable() {
 function genLikeTable() {
     // one profile could attend multiple workshop
     var sql = new String();
+    // profile 5 dont like anyone
+    // noone like idea 7
     const ary = [
-        [1, 1], [1, 3], [1, 5], [1, 7],
+        [1, 1], [1, 3], [1, 5], [1, 8],
         [2, 2], [2, 4], [2, 6], [2, 8],
         [3, 2], [3, 3], [3, 4],
         [4, 1], [4, 5],
-        [5, 2], [5, 5], [5, 7],
         [6, 1], [6, 4], [6, 8],
         [7, 3], [7, 6], [7, 5],
     ];
@@ -301,7 +303,7 @@ function genLikeTable() {
 }
 
 function genComeUpWithTable() {
-    // all workshop need to be created by someone
+    // all idea need to be created by someone
     var sql = new String();
     for (let i=0; i<8; i++) {
         sql+=`
