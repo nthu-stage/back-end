@@ -90,4 +90,28 @@ router.post('/ideas/:i_id', function(req, res, next) {
 	}).catch(next);
 });
 
+// update
+router.put('/ideas/:i_id', function(req, res, next) {
+	const {i_id} = req.params;
+    const {
+		skill, goal, web_url="", image_url=""
+    } = req.body;
+    const fb_id = req.get('userID');
+	if (fb_id === undefined) {
+        const err = new Error('update ideas need to login');
+        err.status = 401;
+        throw err;
+	}
+	if (!i_id) {
+        const err = new Error('which idea you want to update');
+        err.status = 400;
+        throw err;
+	}
+
+	ideasModel.update(i_id, fb_id, skill, goal, web_url, image_url).then(() => {
+		// only response status 200
+		res.sendStatus(200);
+	}).catch(next);
+});
+
 module.exports = router;
