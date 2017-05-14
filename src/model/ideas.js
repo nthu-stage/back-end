@@ -5,116 +5,94 @@ if (!global.db) {
 
 function show (i_id, fb_id) {
 
+    const profile_availableSQL = `
+        SELECT profiles.available_time
+        FROM profiles
+        INNER JOIN likes
+        on likes.idea_id = $1
+        AND likes.profile_id = profiles.id;
+    `;
+
     const profilesSQL = `
         SELECT profiles.id
         FROM profiles
         WHERE profiles.fb_userid = $1;
     `;
 
-    const like_stateSQL = `
-        SELECT count(idea_id)
-        FROM like
-        WHERE like.idea_id = $1
-        AND like.profile_id = $2;
-    `;
-
-    const profile_avalaibleSQL = `
-        SELECT profiles.available_time
-        FROM profiles;
-    ` ;
-
-    const like_countSQL = `
-        SELECT count(like.profile_id)
-        FROM like
-        WHERE like.idea_id = $1;
-    `;
-
-    const comeupwithSQL = `
-        SELECT count(c.profile_id)
-        FROM come_up_with as c
-        WHERE c.profile_id = $2 AND c.idea_id = $1;
-    `;
-
     const ideasSQL = `
         SELECT
-            i.id,
-            i.idea_type,
+            i.id as i_id,
+            i.ideas_type,
             i.skill,
             i.goal,
-            $2,
+            count(l1.profile_id) as like_number,
             i.web_url,
             i.image_url,
-            $3,
-            $4,
-            $5
-        FROM ideas
-        WHERE ideas.id = $1;
+            profiles.picture_url,
+            profiles.name,
+            bool_and(come_ups.profile_id = $2) as "isEditor",
+            bool_or(l1.profile_id = $2) as liked,
+            $3 as "mostAvaiTime"
+        FROM ideas as i
+        INNER JOIN profiles
+        on profiles.id = $2
+        INNER JOIN come_ups
+        on come_ups.idea_id = i.id AND i.id = $1 AND profiles.id = $2
+        LEFT JOIN likes l1
+        on l1.idea_id = $1
+        GROUP BY
+            i.id,
+            i.ideas_type,
+            i.skill,
+            i.goal,
+            i.web_url,
+            i.image_url,
+            profiles.picture_url,
+            profiles.name;
     `;
 
-    let likeState = db.one(profilesSQL, fb_id).then(profiles => {
-        let state = db.one(like_stateSQL, [i_id, profiles.id])
-        if(state.count > 0) {
-            return true ;
-        }
-        else {
-            return false;
-        }
-    })
+    return db.one(profilesSQL, fb_id)
+    .then(profiles => {
 
-    let likeCount = db.one(like_countSQL, i_id);
+        //Calculate top 5
+        return db.any(profile_availableSQL, i_id)
+        .then(schedule => {
+            var available = [];
 
-    let editorState = db.one(profilesSQL, fb_id).then(profiles => {
-        let state = db.one(comeupwithSQL, [i_id, profiles.id])
-        if(state.count > 0) {
-            return true ;
-        }
-        else {
-            return false;
-        }
-    })
-
-    var available = [];
-
-    for(let i=0 ; i<21 ; i++) {
-        available.push({
-            date: i,
-            num: 0
-        });
-    }
-
-    let schedule = db.any(profile_availableSQL);
-
-    for (i in schedule) {
-        let date = 0;
-        let pos1 = 0;
-        let pos2 = 0;
-        while (date < 21) {
-            let pos1 = schedule[i].available_time.indexOf("true",pos1);
-            let pos2 = schedule[i].available_time.indexOf("true",pos2);
-            pos1 += 1;
-            pos2 += 1;
-            if(pos1 < pos2) {
-                available[date].num += 1;
-                pos2 = pos1;
+            for(let i=0 ; i<21 ; i++) {
+                available.push({
+                    date: i,
+                    num: 0
+                });
             }
-            else {
-                pos1 = pos2;
-            }
-            date += 1;
-        }
-    }
-    available.sort(function(a, b){return a.num < b.num});
-    let availableTop = available.slice(0,5);
 
-    return db.one(ideasSQL, [i_id, likeCount.count, editorState, likeState, availableTop]);
+            for(let i of schedule) {
+                let count = 0;
+                let time = 0;
+                while(count < i.available_time.length) {
+                    if(i.available_time[count] === 't') {
+                        available[time].num += 1;
+                        time += 1;
+                    } else if(i.available_time[count] === 'f') {
+                        time += 1;
+                    }
+                    count += 1;
+                }
+            }
+
+            available.sort(function(a,b){ return b.num - a.num});
+
+            var mostAvaiTime =  available.slice(0, 5);
+            return db.one(ideasSQL, [i_id, profiles.id, mostAvaiTime]);
+        })
+    })
 }
 
-
-function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
+function comeUpWith (fb_id, ideas_type, skill, goal, web_url, image_url) {
     const ideasSQL = `
         INSERT INTO ideas ($<this:name>)
         VALUES (
-            $<idea_type>,
+            $<ideas_type>,
             $<skill>,
             $<goal>,
             $<web_url>,
@@ -130,7 +108,7 @@ function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
         WHERE $1 = profiles.fb_userid AND $2 = ideas.id;
     `;
 
-    return db.one(ideasSQL,{idea_type, skill, goal, web_url, image_url})
+    return db.one(ideasSQL,{ideas_type, skill, goal, web_url, image_url})
     .then(ideas => {
         db.one(comeUpWithSQL, [fb_id, ideas.id])
         return ideas.id;

@@ -51,22 +51,22 @@ function regOrLogin(name, email, fb_userid, picture_url) {
 
 function show(fb_id) {
 
-    const profilesIDSQL = `
-        SELECT profiles.id
+    const profilesSQL = `
+        SELECT profiles.id, profiles.available_time
         FROM profiles
         WHERE profiles.fb_userid = $1;
     `;
 
     const proposeSQL = `
         SELECT
-            w.id,
+            w.id as w_id,
             w.title,
             w.start_datetime,
             w.min_number,
             w.max_number,
             w.deadline,
             w.state,
-            count(attend.workshop_id)
+            count(attend.workshop_id) as attendees_number
         FROM workshops as w
         INNER JOIN propose
         on propose.profile_id = $1
@@ -99,10 +99,10 @@ function show(fb_id) {
 
     const comeUPWithSQL = `
         SELECT
-            i.id,
+            i.id as i_id,
             i.ideas_type,
             i.skill,
-            count(likes.idea_id)
+            count(likes.idea_id) as like_number
         FROM ideas as i
         INNER JOIN come_ups as c
         on c.profile_id = $1 AND c.idea_id = i.id
@@ -114,21 +114,39 @@ function show(fb_id) {
             i.skill;
     `;
 
+    const likesSQL = `
+        SELECT
+            i.id,
+            i.ideas_type,
+            i.skill,
+            count(i.id = l1.idea_id) as like_number
+        FROM ideas as i
+        INNER JOIN likes l1
+        on l1.idea_id = i.id
+        INNER JOIN likes l2
+        on l2.profile_id = $1
+        AND l2.idea_id = i.id
+        GROUP BY
+            i.id,
+            i.ideas_type,
+            i.skill;
+    `;
 
-    return db.one(profilesIDSQL,fb_id)
-    .then(profilesID => {
+    return db.one(profilesSQL,fb_id)
+    .then(profiles => {
 
-        db.any(proposeSQL, profilesID.id);
-        db.any(attendSQL, profilesID.id);
-        // return db.any(comeUPWithSQL, profilesID.id);
-        // db.any(likesSQL, profilesID.id);
-        // .then(propose => {
-        //     db.any(attendSQL, {propose, })
-        // })
-    }).catch(error => {
-        console.log('ERROR:', error); // print the error;
-        return false;
-    });
+        var propose = db.any(proposeSQL, profiles.id);
+        var attend = db.any(attendSQL, profiles.id);
+        var comeUPWith = db.any(comeUPWithSQL, profiles.id);
+        var like = db.any(likesSQL, profiles.id);
+
+        return Promise.all([profiles.available_time, propose, attend, comeUPWith, like])
+        .then(([available_time,[propose],[attend],[comeUPWith],[like]]) => {
+            return new Promise((resolve, reject) => {
+                resolve({available_time, propose, attend, comeUPWith, like});
+            })
+        })
+    })
 }
 
 
