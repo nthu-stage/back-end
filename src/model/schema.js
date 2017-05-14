@@ -2,13 +2,40 @@ require('../../config.js');
 const pgp = require('pg-promise')();
 const db = pgp(process.env.DB_URL);
 
-const schemaProfileSql = `
--- [profiles]
+const drop_schema_sql = `
+-- Drop
+DROP TABLE IF EXISTS come_ups;
+DROP TABLE IF EXISTS likes;
+DROP TABLE IF EXISTS propose;
+DROP TABLE IF EXISTS attend;
 -- Drop
 DROP INDEX IF EXISTS profiles_idx_created_at;
 DROP INDEX IF EXISTS profiles_idx_updated_at;
 DROP TABLE IF EXISTS profiles;
 DROP TYPE  IF EXISTS authority;
+-- Drop
+DROP TABLE IF EXISTS workshops;
+DROP TYPE IF EXISTS state;
+CREATE TYPE state AS ENUM (
+    'judging',
+    'judge_fail',
+    'investigation',
+    'reached',
+    'unreached',
+    'finish'
+);
+-- Drop
+DROP INDEX IF EXISTS ideas_idx_created_at;
+DROP INDEX IF EXISTS ideas_idx_updated_at;
+DROP INDEX IF EXISTS ideas_idx_skill;
+DROP INDEX IF EXISTS ideas_idx_goal;
+DROP TABLE IF EXISTS ideas;
+DROP TYPE  IF EXISTS ideas_type;
+`;
+
+
+const schemaProfileSql = `
+-- [profiles]
 -- CREATE
 CREATE TYPE authority AS ENUM (
     'user',
@@ -32,17 +59,6 @@ CREATE INDEX profiles_idx_updated_at ON profiles USING btree(updated_at);
 
 const schemaWorkshopSql = `
 -- [workshops]
--- Drop
-DROP TABLE IF EXISTS workshops;
-DROP TYPE IF EXISTS state;
-CREATE TYPE state AS ENUM (
-    'judging',
-    'judge_fail',
-    'investigation',
-    'reached',
-    'unreached',
-    'finish'
-);
 CREATE TABLE workshops (
     id                  serial PRIMARY KEY NOT NULL,
     image_url           text,
@@ -64,13 +80,6 @@ CREATE TABLE workshops (
 
 const schemaIdeaSql = `
 -- [ideas]
--- Drop
-DROP INDEX IF EXISTS ideas_idx_created_at;
-DROP INDEX IF EXISTS ideas_idx_updated_at;
-DROP INDEX IF EXISTS ideas_idx_skill;
-DROP INDEX IF EXISTS ideas_idx_goal;
-DROP TABLE IF EXISTS ideas;
-DROP TYPE  IF EXISTS ideas_type;
 -- CREATE
 CREATE TYPE ideas_type AS ENUM (
     'teach',
@@ -94,33 +103,32 @@ CREATE INDEX ideas_idx_goal       ON ideas USING gin(goal gin_trgm_ops);
 
 const schemaForeignSql = `
 -- [foreign]
--- Drop
-DROP TABLE IF EXISTS come_ups;
-DROP TABLE IF EXISTS likes;
-DROP TABLE IF EXISTS propose;
-DROP TABLE IF EXISTS attend;
+-- ON DELETE CASCADE:
+-- will delete all rows in the foreign table
+-- that are referenced to the rows that are being deleted in the origin table
 -- Create
 CREATE TABLE come_ups (
-    profile_id          integer NOT NULL DEFAULT 0,
-    idea_id             integer NOT NULL DEFAULT 0
+    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
+    idea_id             serial REFERENCES ideas(id) ON DELETE CASCADE
 );
 CREATE TABLE likes (
-    profile_id          integer NOT NULL DEFAULT 0,
-    idea_id             integer NOT NULL DEFAULT 0
+    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
+    idea_id             serial REFERENCES ideas(id) ON DELETE CASCADE
 );
 CREATE TABLE propose (
-    profile_id          integer NOT NULL DEFAULT 0,
-    workshop_id         integer NOT NULL DEFAULT 0
+    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
+    workshop_id         serial REFERENCES workshops(id) ON DELETE CASCADE
 );
 CREATE TABLE attend (
-    profile_id          integer NOT NULL DEFAULT 0,
-    workshop_id         integer NOT NULL DEFAULT 0
+    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
+    workshop_id         serial REFERENCES workshops(id) ON DELETE CASCADE
 );
 `;
 
 const schemaSql = `
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+${drop_schema_sql}
 ${schemaProfileSql}
 ${schemaIdeaSql}
 ${schemaWorkshopSql}
@@ -261,7 +269,7 @@ function genAttendTable() {
     // profile 2 attend nothing
     // noeone want to attend workshop 3
     const ary = [
-        [1, 1], [1, 5], [1, 6],
+        [1, 1], [1, 3], [1, 5],
         [3, 2], [3, 4], [3, 5],
         [4, 1], [4, 5],
         [6, 1], [6, 2], [6, 4],
@@ -308,8 +316,8 @@ function genComeUpWithTable() {
     for (let i=0; i<8; i++) {
         sql+=`
         INSERT INTO come_ups VALUES(
-        ${Math.floor(Math.random()*7)},
-        ${i}
+        ${Math.floor(Math.random()*7)+1},
+        ${i+1}
         );
         `;
     }
