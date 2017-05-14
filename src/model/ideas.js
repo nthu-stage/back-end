@@ -74,7 +74,7 @@ function show (i_id, fb_id) {
     const ideasSQL = `
         SELECT
             i.id as i_id,
-            i.ideas_type,
+            i.ideas_type as idea_type,
             i.skill,
             i.goal,
             count(l1.profile_id) as like_number,

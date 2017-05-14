@@ -25,7 +25,7 @@ app.use('/api', ideaRouter);
 app.get('/*', (req, res) => res.redirect('/'));
 app.use(errorHandler);
 
-const port = 3030;
+const port = 3000;
 app.listen(port, () => {
     console.log(`Server is up and running on port ${port}...`);
 });
