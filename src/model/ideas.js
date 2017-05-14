@@ -50,7 +50,7 @@ function list(searchText, order, fb_id=null) {
     return db.task(t => {
         return t.any(fb_2_pID_sql, fb_id).then(( [{id: p_id=0}={}]=[] ) => {
             return t.any(sql, [p_id, searchText]);
-        })
+        });
     });
 }
 
