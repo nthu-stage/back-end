@@ -3,15 +3,16 @@ if (!global.db) {
     db = pgp(process.env.DB_URL);
 }
 
+// ===[common sql]===
+const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
+
 function list(searchText, order, fb_id=null) {
     // [TODO]: search priority skill > goal.
     const search = ['skill', 'goal'].map(s => {
         return `${s} ILIKE '%$2:value%'`
     });
-    const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$1`;
-    const user_likes_sql = `
-    SELECT * FROM likes WHERE likes.profile_id = $1
-    `;
+    // $1 = p_id
+    const user_likes_sql = `SELECT * FROM likes WHERE likes.profile_id = $1 `;
     const liked_sql = `
     SELECT
         ideas.id AS id, COUNT(user_likes.profile_id) AS liked
@@ -33,7 +34,7 @@ function list(searchText, order, fb_id=null) {
     `;
     const sql = `
     SELECT
-        i.id, ideas_type, skill, goal, like_number, liked
+        i.id AS i_id, ideas_type, skill, goal, like_number, liked
     FROM ideas as i
     LEFT JOIN (
         ${liked_sql}
@@ -48,7 +49,7 @@ function list(searchText, order, fb_id=null) {
     `;
 
     return db.task(t => {
-        return t.any(fb_2_pID_sql, fb_id).then(( [{id: p_id=0}={}]=[] ) => {
+        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
             return t.any(sql, [p_id, searchText]);
         });
     });
@@ -187,8 +188,53 @@ function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
     })
 }
 
+function like(i_id, fb_id) {
+    // {i_id, like_number, liked: boolean}
+    const toggle_like_sql = `
+    DO
+    $do$
+    bEGIN
+    IF (SELECT COUNT(*) FROM likes WHERE profile_id=$<p_id> AND idea_id=$<i_id>) > 0 THEN
+    DELETE FROM likes WHERE profile_id=$<p_id> AND idea_id=$<i_id>;
+    ELSE
+    INSERT INTO likes VALUES ($<p_id>, $<i_id>);
+    END IF;
+    END
+    $do$;
+    `;
+    const liked_sql = `
+    SELECT COUNT(*) AS liked
+    FROM likes
+    WHERE profile_id = $<p_id> AND idea_id = $<i_id>
+    `;
+    const like_number_sql = `
+    SELECT COUNT(*) AS like_number
+    FROM likes
+    WHERE idea_id = $<i_id>
+    `;
+
+    return db.task(t => {
+        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+            if (p_id ===0 ) {
+                const err = new Error('Cannot found this fb user in database');
+                throw err;
+            }
+            return t.none(toggle_like_sql, {p_id, i_id}).then(() => {
+                var liked = t.one(liked_sql, {p_id, i_id});
+                var like_number = t.one(like_number_sql, {i_id});
+                return Promise.all([liked, like_number]).then(([{liked}, {like_number}]) => {
+                    return new Promise((resolve, reject) => {
+                        resolve({i_id, liked: liked==="1", like_number});
+                    })
+                })
+            })
+        });
+    });
+}
+
 module.exports = {
     show,
     comeUpWith,
-    list
+    list,
+    like,
 };
