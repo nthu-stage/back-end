@@ -148,7 +148,9 @@ function show(fb_id) {
     })
 }
 
-
+function updateAvailableTime(fb_id, available_time) {
+    
+}
 
 
 module.exports = {

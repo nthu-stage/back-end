@@ -10,7 +10,7 @@ router.use(bodyParser.json());
 router.use(accessController);
 
 //  regOrLogin
-router.post('/profiles', function(req, res, next) {
+router.post('/profile', function(req, res, next) {
     const fbID = req.get('userID');
     if (fbID === undefined) {
         const err = new Error('Not a corret ID for Login or Register');
@@ -31,8 +31,8 @@ router.post('/profiles', function(req, res, next) {
     }).catch(next);
 });
 
-
-router.get('/profiles', function(req, res, next) {
+// show
+router.get('/profile', function(req, res, next) {
     const fbID = req.get('userID');
     if (fbID === undefined) {
         const err = new Error('Not a corret ID for watching profiles');
@@ -44,7 +44,34 @@ router.get('/profiles', function(req, res, next) {
     }).catch(next);
 })
 
-
+// update
+router.put('/profile', (req, res, next) => {
+    const fbID = req.get('userID');
+    const {key} = req.query;
+    if (fbID === undefined) {
+        const err = new Error('Not a corret ID for updating the profile.');
+        err.status = 401;
+        throw err;
+    }
+    switch (key) {
+        case 'availableTime':
+            const {availableTime} = req.body;
+            if (!availableTime) {
+                const err = new Error('need available time in request body');
+                err.status = 401;
+                throw err;
+            }
+            profilesModel.updateAvailableTime(fbID, availableTime).then(newAvailableTime => {
+                // console.log(availableTime);
+                res.json(newAvailableTime);
+            }).catch(next);
+            break;
+        default:
+            const err = new Error('Unknown key to update');
+            err.status = 400;
+            throw err;
+    }
+})
 
 
 
