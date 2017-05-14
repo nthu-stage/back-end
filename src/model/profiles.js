@@ -59,14 +59,24 @@ function show(fb_id) {
 
     const profilesSQL = `
         SELECT
-          profiles.available_time,
-          propose
+          w.id, 
+          w.title,
+          w.start_datetime,
+          w.min_number,
+          w.max_number,
+          w.deadline,
+          w.state,
+          w.attendees_number
+        FROM worshops as w
+        INNER JOIN propose
+        on propose.profile_id = $1
+        AND propose.workshop_id = w.w_id;
     `;
 
 
     return db.one(profilesIDSQL,fb_id)
-    .then(profilesID=> {
-        db.one(profilesSQL, profilesID.id)
+    .then(profilesID => {
+        db.any(proposeSQL, profilesID.id)
     }).catch(error => {
         console.log('ERROR:', error); // print the error;
         return false;
