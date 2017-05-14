@@ -195,6 +195,7 @@ function like(i_id, fb_id) {
         return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
             if (p_id ===0 ) {
                 const err = new Error('Cannot found this fb user in database');
+                err.status = 400;
                 throw err;
             }
             return t.none(toggle_like_sql, {p_id, i_id}).then(() => {
@@ -210,9 +211,49 @@ function like(i_id, fb_id) {
     });
 }
 
+function update(i_id, fb_id, skill, goal, web_url, image_url) {
+    //[X]: only author can update: check whether p_id match i_id in come_ups table.
+    //[X]: idea : must exist, if user is author.
+    //[X]: update.
+
+    //[TODO]: admin can update, too.
+
+    const check_author_sql = `
+    SELECT COUNT(*) FROM come_ups WHERE profile_id=$<p_id> AND idea_id=$<i_id>
+    `;
+    const update_idea_sql = `
+    UPDATE ideas
+    SET
+        skill     = $<skill>,
+        goal      = $<goal>,
+        web_url   = $<web_url>,
+        image_url = $<image_url>
+    WHERE id=$<i_id>
+    `;
+
+    return db.task(t => {
+        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+            if (p_id === 0 ) {
+                const err = new Error('Cannot found this fb user in database');
+                err.status = 400;
+                throw err;
+            }
+            return t.one(check_author_sql, {p_id, i_id}).then(( {count} ) => {
+                if (count == "0") {
+                    const err = new Error('Only author can edit.(Cannot match profile and idea)');
+                    err.status = 400;
+                    throw err;
+                }
+                return t.none(update_idea_sql, {i_id, skill, goal, web_url, image_url});
+            });
+        });
+    });
+}
+
 module.exports = {
     show,
     comeUpWith,
     list,
     like,
+    update,
 };
