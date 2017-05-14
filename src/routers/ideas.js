@@ -20,7 +20,7 @@ router.get('/ideas', function(req, res, next) {
 		fbID = null;
 	}
 
-	ideasModel.list(searchText, order, fbID).then(ideas => {
+	ideasModel.list(searchText, order, fbID).then((ideas=[]) => {
 		for (let idea of ideas) {
 			idea.liked = (idea.liked=="1");
 		}
