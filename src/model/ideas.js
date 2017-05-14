@@ -124,7 +124,7 @@ function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
     `;
 
     const comeUpWithSQL = `
-        INSERT INTO come_up_with
+        INSERT INTO come_ups
         SELECT profiles.id, ideas.id
         FROM profiles, ideas
         WHERE $1 = profiles.fb_userid AND $2 = ideas.id;

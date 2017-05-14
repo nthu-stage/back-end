@@ -13,7 +13,7 @@ router.use(accessController);
 router.post('/profiles', function(req, res, next) {
     const fbID = req.get('userID');
     if (fbID === undefined) {
-        const err = new Error('proposing a profiles need to login');
+        const err = new Error('Not a corret ID for Login or Register');
         err.status = 401;
         throw err;
     }
@@ -30,6 +30,19 @@ router.post('/profiles', function(req, res, next) {
         res.json(id);
     }).catch(next);
 });
+
+
+router.get('/profiles', function(req, res, next) {
+    const fbID = req.get('userID');
+    if (fbID === undefined) {
+        const err = new Error('Not a corret ID for watching profiles');
+        err.status = 401;
+        throw err;
+    }
+    profilesModel.show(fbID).then(profiles => {
+        res.json(profiles);
+    }).catch(next);
+})
 
 
 

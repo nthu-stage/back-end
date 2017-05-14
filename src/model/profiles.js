@@ -54,29 +54,77 @@ function show(fb_id) {
     const profilesIDSQL = `
         SELECT profiles.id
         FROM profiles
-        WHERE prfiles.fb_userid = $1;
+        WHERE profiles.fb_userid = $1;
     `;
 
-    const profilesSQL = `
+    const proposeSQL = `
         SELECT
-          w.id, 
-          w.title,
-          w.start_datetime,
-          w.min_number,
-          w.max_number,
-          w.deadline,
-          w.state,
-          w.attendees_number
-        FROM worshops as w
+            w.id,
+            w.title,
+            w.start_datetime,
+            w.min_number,
+            w.max_number,
+            w.deadline,
+            w.state,
+            count(attend.workshop_id)
+        FROM workshops as w
         INNER JOIN propose
         on propose.profile_id = $1
-        AND propose.workshop_id = w.w_id;
+        AND propose.workshop_id = w.id
+        LEFT JOIN attend
+        on attend.workshop_id = w.id
+        GROUP BY
+        attend.workshop_id,
+        w.id,
+        w.title,
+        w.start_datetime,
+        w.min_number,
+        w.max_number,
+        w.deadline,
+        w.state;
+    `;
+
+    const attendSQL = `
+        SELECT
+          w.id,
+          w.title,
+          w.start_datetime,
+          w.state
+        FROM workshops as w
+        INNER JOIN attend
+        on attend.profile_id = $1
+        AND attend.workshop_id = w.id;
+    `;
+
+
+    const comeUPWithSQL = `
+        SELECT
+            i.id,
+            i.ideas_type,
+            i.skill,
+            count(likes.idea_id)
+        FROM ideas as i
+        INNER JOIN come_ups as c
+        on c.profile_id = $1 AND c.idea_id = i.id
+        LEFT JOIN likes
+        on likes.idea_id = i.id
+        GROUP BY
+            i.id,
+            i.ideas_type,
+            i.skill;
     `;
 
 
     return db.one(profilesIDSQL,fb_id)
     .then(profilesID => {
-        db.any(proposeSQL, profilesID.id)
+
+        db.any(proposeSQL, profilesID.id);
+        db.any(attendSQL, profilesID.id);
+        // return db.any(comeUPWithSQL, profilesID.id);
+        // db.any(likesSQL, profilesID.id);
+        // .then(propose => {
+        //     db.any(attendSQL, {propose, })
+        // })
     }).catch(error => {
         console.log('ERROR:', error); // print the error;
         return false;
