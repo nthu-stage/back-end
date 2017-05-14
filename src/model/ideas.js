@@ -4,7 +4,12 @@ if (!global.db) {
 }
 
 // ===[common sql]===
+// {fb_id} => {p_id}
 const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
+// {p_id, i_id} => {is_author}, then check whether is_author == "1"
+const check_author_sql = `
+SELECT COUNT(*) AS is_author FROM come_ups WHERE profile_id=$<p_id> AND idea_id=$<i_id>
+`;
 
 function list(searchText, order, fb_id=null) {
     // [TODO]: search priority skill > goal.
@@ -211,6 +216,31 @@ function like(i_id, fb_id) {
     });
 }
 
+function remove(i_id, fb_id) {
+    const delete_idea_sql = `
+        DELETE FROM ideas
+        WHERE id=$<i_id>
+    `;
+
+    return db.task(t => {
+        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+            if (p_id === 0 ) {
+                const err = new Error('Cannot found this fb user in database');
+                err.status = 400;
+                throw err;
+            }
+            return t.one(check_author_sql, {p_id, i_id}).then(( {is_author} ) => {
+                if (is_author == "0") {
+                    const err = new Error('Only author can edit.(Cannot match profile and idea)');
+                    err.status = 401;
+                    throw err;
+                }
+                return t.none(delete_idea_sql, {i_id});
+            });
+        });
+    });
+}
+
 function update(i_id, fb_id, skill, goal, web_url, image_url) {
     //[X]: only author can update: check whether p_id match i_id in come_ups table.
     //[X]: idea : must exist, if user is author.
@@ -218,9 +248,6 @@ function update(i_id, fb_id, skill, goal, web_url, image_url) {
 
     //[TODO]: admin can update, too.
 
-    const check_author_sql = `
-    SELECT COUNT(*) FROM come_ups WHERE profile_id=$<p_id> AND idea_id=$<i_id>
-    `;
     const update_idea_sql = `
     UPDATE ideas
     SET
@@ -238,10 +265,10 @@ function update(i_id, fb_id, skill, goal, web_url, image_url) {
                 err.status = 400;
                 throw err;
             }
-            return t.one(check_author_sql, {p_id, i_id}).then(( {count} ) => {
-                if (count == "0") {
+            return t.one(check_author_sql, {p_id, i_id}).then(( {is_author} ) => {
+                if (is_author == "0") {
                     const err = new Error('Only author can edit.(Cannot match profile and idea)');
-                    err.status = 400;
+                    err.status = 401;
                     throw err;
                 }
                 return t.none(update_idea_sql, {i_id, skill, goal, web_url, image_url});
@@ -256,4 +283,5 @@ module.exports = {
     list,
     like,
     update,
+    remove,
 };

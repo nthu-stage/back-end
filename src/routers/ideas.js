@@ -114,4 +114,24 @@ router.put('/ideas/:i_id', function(req, res, next) {
 	}).catch(next);
 });
 
+// delete
+router.delete('/ideas/:i_id', (req, res, next) => {
+	const {i_id} = req.params;
+	const fb_id = req.get('userID');
+	if (fb_id === undefined) {
+		const err = new Error('delete ideas need to login');
+		err.status = 401;
+		throw err;
+	}
+	if (!i_id) {
+		const err = new Error('which idea you want to delete');
+		err.status = 400;
+		throw err;
+	}
+
+	ideasModel.remove(i_id, fb_id).then(() => {
+		res.sendStatus(200);
+	}).catch(next);
+})
+
 module.exports = router;
