@@ -86,7 +86,6 @@ function show(fb_id) {
 
     const attendSQL = `
         SELECT
-          w.id,
           w.title,
           w.start_datetime,
           w.state
@@ -116,7 +115,7 @@ function show(fb_id) {
 
     const likesSQL = `
         SELECT
-            i.id,
+            i.id as i_id,
             i.ideas_type,
             i.skill,
             count(i.id = l1.idea_id) as like_number

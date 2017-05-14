@@ -19,15 +19,15 @@ router.post('/ideas', function(req, res, next) {
         throw err;
     }
 
-    const {ideas_type, skill, goal, web_url, image_url} = req.body;
+    const {idea_type, skill, goal, web_url, image_url} = req.body;
 
-    if(!ideas_type || !skill || !goal || !web_url || !image_url) {
+    if(!idea_type || !skill || !goal || !web_url || !image_url) {
         const err = new Error('Workshops Information are required');
             err.status = 400;
         throw err;
     }
 
-    ideasModel.comeUpWith(fbID, ideas_type, skill, goal, web_url, image_url)
+    ideasModel.comeUpWith(fbID, idea_type, skill, goal, web_url, image_url)
     .then(id => {
         res.json(id);
     }).catch(next);

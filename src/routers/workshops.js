@@ -73,33 +73,31 @@ router.post('/workshops', function(req, res, next) {
     }
 
     const {
-        image_url,
-        title,
+        img_url,
         start_datetime,
         end_datetime,
+        location,
+        content,
+        title,
         min_number,
         max_number,
         deadline,
-        location,
         introduction,
-        content,
-        state,
-        price,
+        price
     } = req.body;
 
     if(
-        !image_url ||
-        !title ||
-        !start_datetime ||
-        !end_datetime ||
-        !min_number ||
-        !max_number ||
-        !deadline ||
-        !location ||
-        !introduction ||
-        !content ||
-        !state ||
-        !price
+      !img_url ||
+      !start_datetime ||
+      !end_datetime ||
+      !location ||
+      !content ||
+      !title ||
+      !min_number ||
+      !max_number ||
+      !deadline ||
+      !introduction ||
+      !price
     ) {
         const err = new Error('Workshops Information are required');
             err.status = 400;
@@ -108,17 +106,15 @@ router.post('/workshops', function(req, res, next) {
 
     workshopsModel.propose(
         fbID,
-        image_url,
-        title,
         new Date(start_datetime).getTime(),
         new Date(end_datetime).getTime(),
+        location,
+        content,
+        title,
         min_number,
         max_number,
         new Date(deadline).getTime(),
-        location,
         introduction,
-        content,
-        state,
         price
     ).then(id => {
         res.json(id);
