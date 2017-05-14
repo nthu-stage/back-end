@@ -83,8 +83,7 @@ function show (i_id, fb_id) {
             profiles.picture_url,
             profiles.name,
             bool_and(come_ups.profile_id = $2) as "isEditor",
-            bool_or(l1.profile_id = $2) as liked,
-            $3 as "mostAvaiTime"
+            bool_or(l1.profile_id = $2) as liked
         FROM ideas as i
         INNER JOIN profiles
         on profiles.id = $2
@@ -107,14 +106,14 @@ function show (i_id, fb_id) {
     .then(profiles => {
 
         //Calculate top 5
-        return db.any(profile_availableSQL, i_id)
+        var mostAvaiTime = db.any(profile_availableSQL, i_id)
         .then(schedule => {
             var available = [];
 
             for(let i=0 ; i<21 ; i++) {
                 available.push({
-                    date: i,
-                    num: 0
+                    time: i,
+                    people: 0
                 });
             }
 
@@ -123,7 +122,7 @@ function show (i_id, fb_id) {
                 let time = 0;
                 while(count < i.available_time.length) {
                     if(i.available_time[count] === 't') {
-                        available[time].num += 1;
+                        available[time].people += 1;
                         time += 1;
                     } else if(i.available_time[count] === 'f') {
                         time += 1;
@@ -133,8 +132,17 @@ function show (i_id, fb_id) {
             }
 
             available.sort(function(a,b){ return b.num - a.num});
-            var mostAvaiTime =  available.slice(0, 5);
-            return db.one(ideasSQL, [i_id, profiles.id, mostAvaiTime]);
+            return available.slice(0, 5);
+        })
+
+        var ideas = db.one(ideasSQL, [i_id, profiles.id]);
+
+        return Promise.all([ideas, mostAvaiTime])
+        .then(([ideas, mostAvaiTime]) => {
+          ideas.mostAvaiTime = mostAvaiTime;
+            return new Promise((resolve, reject) => {
+                resolve(ideas);
+            })
         })
     })
 }
