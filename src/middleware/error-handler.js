@@ -9,6 +9,21 @@ module.exports = function(err, req, res, next) {
         if (err) console.error(err);
     });
 
-    res.sendStatus(err.status ? err.status : 500);
+    const status = err.status || 500;
+    const status_code = (status==200) ? 'OK'
+					  : (status==400) ? 'Bad Request'
+					  : (status==401) ? 'Unauthorized'
+					  : /* default */   'Internal Server Error';
+    var msg = [
+	    status_code,
+		err,
+		JSON.stringify(err),
+		Error().stack
+	];
+	console.log(msg.join('\n'));
+
+	res.status(status).send(msg.join('\n'));
+
+    // res.sendStatus(err.status ? err.status : 500);
     // next(err);
 };
