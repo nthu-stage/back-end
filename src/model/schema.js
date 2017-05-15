@@ -11,18 +11,16 @@ DROP TABLE IF EXISTS attends;
 -- Drop
 DROP INDEX IF EXISTS profiles_idx_created_at;
 DROP INDEX IF EXISTS profiles_idx_updated_at;
-DROP TABLE IF EXISTS profiles;
-DROP TYPE  IF EXISTS authority;
+DROP TABLE IF EXISTS pro authority;
 -- Drop
 DROP TABLE IF EXISTS workshops;
-DROP TYPE IF EXISTS phase;
-CREATE TYPE phase AS ENUM (
+DROP TYPE IF EXISTS state;
+CREATE TYPE state AS ENUM (
     'judging',
     'judge_na',
-    'investigating',
-    'unreached',
+    'judge_ac',
     'reached',
-    'over'
+    'unreached'
 );
 -- Drop
 DROP INDEX IF EXISTS ideas_idx_created_at;
@@ -72,7 +70,7 @@ CREATE TABLE workshops (
     location            text NOT NULL,
     introduction        text NOT NULL DEFAULT '',
     content             text NOT NULL DEFAULT '',
-    phase               phase NOT NULL,
+    state               state NOT NULL,
     price               integer NOT NULL DEFAULT 0,
     created_at          bigint NOT NULL DEFAULT (extract(epoch from now())),
     updated_at          bigint NOT NULL DEFAULT (extract(epoch from now()))
@@ -141,7 +139,7 @@ function genRandomAvaiTime() {
     for (let i=0; i<21; i++) {
         avai_time[i] = Math.random() < 0.5;
     }
-    return avai_time;
+    return JSON.stringify(avai_time);
 }
 
 function genDummyProfiles() {
@@ -182,7 +180,7 @@ function genDummyWorkshops() {
     const n = 5;
     const titles=['React', 'Git', 'Archi', 'Linux', 'Stage'];
     const locations=['London','Tokyo','Rome','Taipei','Hsinchu'];
-    const phases=[ 'judging', 'judge_na', 'investigating', 'unreached', 'reached', 'over' ];
+    const phases=[ 'judging', 'judge_na', 'judge_ac', 'reached', 'unreached' ];
     var sql = new String();
     for (let i=0; i<n; i++) {
        sql += `
@@ -195,7 +193,7 @@ INSERT INTO workshops(
     deadline,
     pre_deadline,
     location,
-    phase,
+    state,
     price,
     created_at,
     updated_at

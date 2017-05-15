@@ -19,9 +19,9 @@ router.post('/ideas', function(req, res, next) {
         throw err;
     }
 
-    const {idea_type, skill, goal, web_url, image_url} = req.body;
+    const {idea_type, skill, goal, web_url = "", image_url= ""} = req.body;
 
-    if(!idea_type || !skill || !goal || !web_url || !image_url) {
+    if(!idea_type || !skill || !goal) {
         const err = new Error('Workshops Information are required');
             err.status = 400;
         throw err;

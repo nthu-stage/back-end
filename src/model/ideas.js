@@ -8,7 +8,7 @@ if (!global.db) {
 const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
 // {p_id, i_id} => {is_author}, then check whether is_author == "1"
 const check_author_sql = `
-SELECT COUNT(*) AS is_author FROM come_ups WHERE profile_id=$<p_id> AND idea_id=$<i_id>
+SELECT COUNT(*) AS is_author FROM come_up_withs WHERE profile_id=$<p_id> AND idea_id=$<i_id>
 `;
 
 function list(searchText, order, fb_id=null) {
@@ -87,13 +87,13 @@ function show (i_id, fb_id) {
             i.image_url,
             profiles.picture_url,
             profiles.name,
-            bool_and(come_ups.profile_id = $2) as "isEditor",
+            bool_and(come_up_withs.profile_id = $2) as "isEditor",
             bool_or(l1.profile_id = $2) as liked
         FROM ideas as i
+        INNER JOIN come_up_withs
+        on come_up_withs.idea_id = i.id AND i.id = $1
         INNER JOIN profiles
-        on profiles.id = $2
-        INNER JOIN come_ups
-        on come_ups.idea_id = i.id AND i.id = $1 AND profiles.id = $2
+        on profiles.id = come_up_withs.profile_id
         LEFT JOIN likes l1
         on l1.idea_id = $1
         GROUP BY
@@ -107,49 +107,50 @@ function show (i_id, fb_id) {
             profiles.name;
     `;
 
-    return db.one(profilesSQL, fb_id)
-    .then(profiles => {
+    return db.task(t => {
+        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+            //Calculate top 5
+            var mostAvaiTime = db.any(profile_availableSQL, i_id)
+            .then(schedule => {
+                var available = [];
 
-        //Calculate top 5
-        var mostAvaiTime = db.any(profile_availableSQL, i_id)
-        .then(schedule => {
-            var available = [];
-
-            for(let i=0 ; i<21 ; i++) {
-                available.push({
-                    time: i,
-                    people: 0
-                });
-            }
-
-            for(let i of schedule) {
-                let count = 0;
-                let time = 0;
-                while(count < i.available_time.length) {
-                    if(i.available_time[count] === 't') {
-                        available[time].people += 1;
-                        time += 1;
-                    } else if(i.available_time[count] === 'f') {
-                        time += 1;
-                    }
-                    count += 1;
+                for(let i=0 ; i<21 ; i++) {
+                    available.push({
+                        time: i,
+                        people: 0
+                    });
                 }
-            }
 
-            available.sort(function(a,b){ return b.num - a.num});
-            return available.slice(0, 5);
-        })
+                for(let i of schedule) {
+                    let count = 0;
+                    let time = 0;
+                    while(count < i.available_time.length) {
+                        if(i.available_time[count] === 't') {
+                            available[time].people += 1;
+                            time += 1;
+                        } else if(i.available_time[count] === 'f') {
+                            time += 1;
+                        }
+                        count += 1;
+                    }
+                }
 
-        var ideas = db.one(ideasSQL, [i_id, profiles.id]);
-
-        return Promise.all([ideas, mostAvaiTime])
-        .then(([ideas, mostAvaiTime]) => {
-          ideas.mostAvaiTime = mostAvaiTime;
-            return new Promise((resolve, reject) => {
-                resolve(ideas);
+                available.sort(function(a,b){ return b.people - a.people});
+                console.log(available);
+                return available.slice(0, 5);
             })
-        })
-    })
+
+            var ideas = db.one(ideasSQL, [i_id, p_id]);
+
+            return Promise.all([ideas, mostAvaiTime])
+            .then(([ideas, mostAvaiTime]) => {
+              ideas.mostAvaiTime = mostAvaiTime;
+                return new Promise((resolve, reject) => {
+                    resolve(ideas);
+                })
+            })
+        });
+    });
 }
 
 function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
@@ -162,20 +163,22 @@ function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
             $<web_url>,
             $<image_url>
         )
-        RETURNING id;
+        RETURNING id as i_id;
     `;
 
     const comeUpWithSQL = `
-        INSERT INTO come_ups
+        INSERT INTO come_up_withs
         SELECT profiles.id, ideas.id
-        FROM profiles, ideas
-        WHERE $1 = profiles.fb_userid AND $2 = ideas.id;
+        FROM profiles
+        INNER JOIN ideas
+        on profiles.fb_userid = $1
+        AND ideas.id = $2;
     `;
 
     return db.one(ideasSQL,{idea_type, skill, goal, web_url, image_url})
     .then(ideas => {
-        db.one(comeUpWithSQL, [fb_id, ideas.id])
-        return ideas.id;
+        db.none(comeUpWithSQL, [fb_id, ideas.i_id]);
+        return ideas;
     })
 }
 
@@ -250,7 +253,7 @@ function remove(i_id, fb_id) {
 }
 
 function update(i_id, fb_id, skill, goal, web_url, image_url) {
-    //[X]: only author can update: check whether p_id match i_id in come_ups table.
+    //[X]: only author can update: check whether p_id match i_id in come_up_withs table.
     //[X]: idea : must exist, if user is author.
     //[X]: update.
 
