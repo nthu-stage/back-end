@@ -3,37 +3,82 @@ if (!global.db) {
     db = pgp(process.env.DB_URL);
 }
 
+
 const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
 
-function list(searchText, stateFilter ) {
+function list(searchText, stateFilter) {
+    const cur_time = Date.now()/1000;
+
     var where = [];
     if (searchText) {
         // [TODO]:  temporarialy only search title.
-        where.push(`w.title ILIKE '%$1:value%'`);
+        where.push(`w.title ILIKE '%$<searchText:value>%'`);
     }
-    if (stateFilter) {
-        where.push(`w.state = $2`);
-    }
-    const sql = `
-SELECT
-    w.id,
-    w.image_url,
-    w.title,
-    w.start_datetime,
-    w.min_number,
-    w.max_number,
-    w.introduction,
-    w.state,
-    w.deadline,
-    COUNT(a.profile_id) AS attendees_number
-FROM workshops AS w
-LEFT JOIN attends AS a
-ON w.id = a.workshop_id
-${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-GROUP BY w.id
-ORDER BY w.deadline ASC
+
+    const update_unreached_sql = `
+        UPDATE workshops
+        SET state = 'unreached'
+        WHERE
+            state = 'judge_ac' AND
+            pre_deadline < $<cur_time>
     `;
-    return db.any(sql, [searchText, stateFilter]);
+    const sql = `
+        SELECT
+            w.id as w_id,
+            w.image_url,
+            w.title,
+            w.min_number,
+            w.max_number,
+            w.deadline,
+            w.pre_deadline,
+            w.introduction,
+            w.price,
+            COUNT(a.profile_id) AS attendees_number,
+            w.start_datetime,
+            w.end_datetime,
+            w.state
+        FROM workshops AS w
+        LEFT JOIN attends AS a
+        ON w.id = a.workshop_id
+        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+        GROUP BY w.id
+        ORDER BY w.deadline ASC
+    `;
+    return db.task(t => {
+        return t.none(update_unreached_sql , {cur_time}).then(() => {
+            return t.any(sql, {searchText, stateFilter}).then(ws => {
+                for (let w of ws) {
+                    switch (w.state) {
+                        case 'judging':   w.phase='judging';       break;
+                        case 'judge_na':  w.phase='judge_na';      break;
+                        case 'judge_ac':  w.phase='investigating'; break;
+                        case 'unreached': w.phase='unreached';     break;
+                        default:/*reached*/
+                            w.phase=(w.end_datetime<cur_time) ? 'over' : 'reached';
+                    }
+                    delete w.start_datetime;
+                    delete w.end_datetime;
+                    delete w.state
+                }
+                return ws.filter(w => {
+                    switch (stateFilter) {
+                        case "0":
+                            return false;
+                        case "1":
+                            return w.phase=='reached';
+                        case "2":
+                            return w.phase=='investigating';
+                        // debug only
+                        // case "all":
+                        //     return true;
+                        default:
+                            console.log("default case");
+                            return (w.phase=='reached') || (w.phase=='investigating');
+                    }
+                });
+            });
+        });
+    });
 }
 
 function propose(
