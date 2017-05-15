@@ -11,17 +11,11 @@ DROP TABLE IF EXISTS attends;
 -- Drop
 DROP INDEX IF EXISTS profiles_idx_created_at;
 DROP INDEX IF EXISTS profiles_idx_updated_at;
-DROP TABLE IF EXISTS pro authority;
 -- Drop
+DROP TABLE IF EXISTS profiles;
 DROP TABLE IF EXISTS workshops;
 DROP TYPE IF EXISTS state;
-CREATE TYPE state AS ENUM (
-    'judging',
-    'judge_na',
-    'judge_ac',
-    'reached',
-    'unreached'
-);
+DROP TYPE IF EXISTS authority;
 -- Drop
 DROP INDEX IF EXISTS ideas_idx_created_at;
 DROP INDEX IF EXISTS ideas_idx_updated_at;
@@ -38,6 +32,13 @@ const schemaProfileSql = `
 CREATE TYPE authority AS ENUM (
     'user',
     'admin'
+);
+CREATE TYPE state AS ENUM (
+    'judging',
+    'judge_na',
+    'judge_ac',
+    'reached',
+    'unreached'
 );
 CREATE TABLE profiles (
     id                  serial PRIMARY KEY NOT NULL,
