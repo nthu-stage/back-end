@@ -11,17 +11,11 @@ DROP TABLE IF EXISTS attends;
 -- Drop
 DROP INDEX IF EXISTS profiles_idx_created_at;
 DROP INDEX IF EXISTS profiles_idx_updated_at;
-DROP TABLE IF EXISTS pro authority;
 -- Drop
+DROP TABLE IF EXISTS profiles;
 DROP TABLE IF EXISTS workshops;
 DROP TYPE IF EXISTS state;
-CREATE TYPE state AS ENUM (
-    'judging',
-    'judge_na',
-    'judge_ac',
-    'reached',
-    'unreached'
-);
+DROP TYPE IF EXISTS authority;
 -- Drop
 DROP INDEX IF EXISTS ideas_idx_created_at;
 DROP INDEX IF EXISTS ideas_idx_updated_at;
@@ -38,6 +32,13 @@ const schemaProfileSql = `
 CREATE TYPE authority AS ENUM (
     'user',
     'admin'
+);
+CREATE TYPE state AS ENUM (
+    'judging',
+    'judge_na',
+    'judge_ac',
+    'reached',
+    'unreached'
 );
 CREATE TABLE profiles (
     id                  serial PRIMARY KEY NOT NULL,
@@ -167,9 +168,9 @@ VALUES(
     '${names[i]}_photo_url',
     'user',
     '${genRandomAvaiTime()}',
-    ${Date.now()/1000 + (i-n)*3600},
-    ${Date.now()/1000 + (i-n)*3600},
-    ${Date.now()/1000 + (i-n)*3600}
+    ${Date.now()/1000 - (n-i)*3600},
+    ${Date.now()/1000 - (n-i)*3600},
+    ${Date.now()/1000 - (n-i)*3600}
 );
     `;
     }
@@ -200,12 +201,12 @@ INSERT INTO workshops(
 )
 VALUES(
     '${titles[i]}',
-    ${Date.now()/1000 + (i-n)*3600 + 72000},
-    ${Date.now()/1000 + (i-n)*3600 + 90000},
+    ${Date.now()/1000 - (n-i)*3600 - 72000},
+    ${Date.now()/1000 - (n-i)*3600 - 90000},
     ${Math.floor(Math.random() * 10)},
     ${Math.floor(Math.random() * 30)+10},
-    ${Date.now()/1000 + (i-n)*3600 + 36000},
-    ${Date.now()/1000 + (i-n)*3600 + 36000},
+    ${Date.now()/1000 - (n-i)*3600 - 36000},
+    ${Date.now()/1000 - (n-i)*3600 - 36000},
     '${locations[i]}',
     '${phases[i]}',
     ${Math.random() * 100},
@@ -241,8 +242,8 @@ VALUES(
     '${goals[i]}',
     'some_web_url',
     'some_image_url',
-    ${Date.now()/1000 + (i-n)*3600 + 36000},
-    ${Date.now()/1000 + (i-n)*3600 + 36000}
+    ${Date.now()/1000 - (n-i)*3600},
+    ${Date.now()/1000 - (n-i)*3600}
 );
     `;
     }

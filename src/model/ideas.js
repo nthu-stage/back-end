@@ -61,7 +61,6 @@ function list(searchText, order, fb_id=null) {
 }
 
 function show (i_id, fb_id) {
-
     const profile_availableSQL = `
         SELECT profiles.available_time
         FROM profiles
@@ -242,8 +241,8 @@ function remove(i_id, fb_id) {
             }
             return t.one(check_author_sql, {p_id, i_id}).then(( {is_author} ) => {
                 if (is_author == "0") {
-                    const err = new Error('Only author can edit.(Cannot match profile and idea)');
-                    err.status = 401;
+                    const err = new Error('Cannot match profile and idea: not author or idea not exist');
+                    err.status = 400;
                     throw err;
                 }
                 return t.none(delete_idea_sql, {i_id});
@@ -278,8 +277,8 @@ function update(i_id, fb_id, skill, goal, web_url, image_url) {
             }
             return t.one(check_author_sql, {p_id, i_id}).then(( {is_author} ) => {
                 if (is_author == "0") {
-                    const err = new Error('Only author can edit.(Cannot match profile and idea)');
-                    err.status = 401;
+                    const err = new Error('Cannot match profile and idea: not author or idea not exist');
+                    err.status = 400;
                     throw err;
                 }
                 return t.none(update_idea_sql, {i_id, skill, goal, web_url, image_url});
