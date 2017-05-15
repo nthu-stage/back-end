@@ -36,9 +36,9 @@ function list(searchText, stateFilter) {
             w.state
         FROM workshops AS w
         LEFT JOIN attends AS a
-        ON w_id = a.workshop_id
+        ON w.id = a.workshop_id
         ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-        GROUP BY w_id
+        GROUP BY w.id
         ORDER BY w.deadline ASC
     `;
     return db.task(t => {
