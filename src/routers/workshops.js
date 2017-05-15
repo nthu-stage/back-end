@@ -73,7 +73,7 @@ router.post('/workshops', function(req, res, next) {
     }
 
     const {
-        img_url,
+        image_url = "",
         start_datetime,
         end_datetime,
         location,
@@ -87,7 +87,6 @@ router.post('/workshops', function(req, res, next) {
     } = req.body;
 
     if(
-      !img_url ||
       !start_datetime ||
       !end_datetime ||
       !location ||
@@ -106,6 +105,7 @@ router.post('/workshops', function(req, res, next) {
 
     workshopsModel.propose(
         fbID,
+        image_url,
         new Date(start_datetime).getTime(),
         new Date(end_datetime).getTime(),
         location,
@@ -115,7 +115,8 @@ router.post('/workshops', function(req, res, next) {
         max_number,
         new Date(deadline).getTime(),
         introduction,
-        price
+        price,
+        'judging'
     ).then(id => {
         res.json(id);
     }).catch(next);

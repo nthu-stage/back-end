@@ -10,7 +10,7 @@ function list(searchText, stateFilter ) {
         where.push(`w.title ILIKE '%$1:value%'`);
     }
     if (stateFilter) {
-        where.push(`w.state = $2`);
+        where.push(`w.phase = $2`);
     }
     const sql = `
 SELECT
@@ -21,11 +21,11 @@ SELECT
     w.min_number,
     w.max_number,
     w.introduction,
-    w.state,
+    w.phase,
     w.deadline,
     COUNT(a.profile_id) AS attendees_number
 FROM workshops AS w
-LEFT JOIN attend AS a
+LEFT JOIN attends AS a
 ON w.id = a.workshop_id
 ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
 GROUP BY w.id
@@ -36,7 +36,7 @@ ORDER BY w.deadline ASC
 
 function propose(
     fb_id,
-    img_url,
+    image_url,
     start_datetime,
     end_datetime,
     location,
@@ -46,7 +46,8 @@ function propose(
     max_number,
     deadline,
     introduction,
-    price
+    price,
+    phase
 ){
     const workshopsSQL = `
         INSERT INTO workshops ($<this:name>)
@@ -61,20 +62,21 @@ function propose(
             $<max_number>,
             $<deadline>,
             $<introduction>,
-            $<price>
+            $<price>,
+            $<phase>
         )
-        RETURNING workshops.id;
+        RETURNING workshops.id as w_id;
     `;
 
     const proposeSQL = `
-        INSERT INTO propose
+        INSERT INTO proposes
         SELECT profiles.id, workshops.id
         FROM profiles, workshops
         WHERE profiles.fb_userid = $1 AND workshops.id = $2;
     `;
 
     return db.one(workshopsSQL, {
-        img_url,
+        image_url,
         start_datetime,
         end_datetime,
         location,
@@ -84,10 +86,11 @@ function propose(
         max_number,
         deadline,
         introduction,
-        price
+        price,
+        phase
     }).then(workshops => {
         db.none(proposeSQL, [fb_id, workshops.id]);
-        return workshops.id;
+        return workshops;
     }).catch(error => {
         console.log('ERROR:', error); // print the error;
     });
@@ -106,7 +109,7 @@ function show(w_id, fb_id) {
 
     const attend_countSQL = `
         SELECT count(a.profile_id)
-        FROM attend as a
+        FROM attends as a
         WHERE a.workshop_id = $1 AND a.profile_id = $2;
     `;
 
@@ -124,11 +127,13 @@ function show(w_id, fb_id) {
             w.introduction,
             w.price,
             w.phase,
-            profiles.name,
+            profiles.name as name,
             bool_and($2 != 0) as attended
         FROM workshops as w
-        INNER JOIN propose
-        on w.id = $1 AND propose.workshop_id = $1
+        INNER JOIN proposes
+        on w.id = $1 AND proposes.workshop_id = $1
+        INNER JOIN profiles
+        on profiles.id = proposes.profile_id
         GROUP BY
             w.image_url,
             w.start_datetime,
@@ -142,7 +147,7 @@ function show(w_id, fb_id) {
             w.introduction,
             w.price,
             w.phase,
-            profiles.name,
+            profiles.name;
     `;
 
     const ori_workshopsSQL = `
@@ -181,22 +186,22 @@ function attend(w_id, fb_id) {
     `;
 
     const attendSQL = `
-        INSERT INTO attend
+        INSERT INTO attends
         VALUES ($2, $1)
         RETURNING *;
     `;
 
-    const state = `
-        SELECT bool_or(attend.profiles_id = $2) as attended
-        FROM attend
-        WHERE attend.workshop_id = $1;
+    const phaseSQL = `
+        SELECT bool_or(attends.profile_id = $2) as attended
+        FROM attends
+        WHERE attends.workshop_id = $1;
     `;
 
     return db.one(profilesSQL, fb_id)
     .then(profiles => {
         return db.one(attendSQL, [w_id, profiles.id])
         .then(attend => {
-            return db.one(stateSQL, [w_id, profiles.id]);
+            return db.one(phaseSQL, [w_id, profiles.id]);
         }).catch(error => {
             console.log('ERROR:', error); // print the error;
         });
@@ -210,9 +215,9 @@ function attend(w_id, fb_id) {
 // Unattend
 function unattend(w_id, fb_id) {
     const unattendSQL = `
-        DELETE FROM attend
-        WHERE attend.profile_id = $2
-        AND attend.workshop_id = $1;
+        DELETE FROM attends
+        WHERE attends.profile_id = $2
+        AND attends.workshop_id = $1;
     `;
 
     return db.one(profilesSQL, fb_id)

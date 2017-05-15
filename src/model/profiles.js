@@ -21,7 +21,7 @@ function regOrLogin(name, email, fb_userid, picture_url) {
             $<authority>,
             $<available_time>
         )
-        RETURNING id;
+        RETURNING id as p_id;
     `;
 
     const updateProfile = `
@@ -32,7 +32,7 @@ function regOrLogin(name, email, fb_userid, picture_url) {
             picture_url = $<picture_url>,
             last_login_datetime = (extract(epoch from now()))
         WHERE profiles.fb_userid = $<fb_userid>
-        RETURNING id;
+        RETURNING id as p_id;
     `;
 
     var available_time = 'false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false';
@@ -65,58 +65,58 @@ function show(fb_id) {
             w.min_number,
             w.max_number,
             w.deadline,
-            w.state,
-            count(attend.workshop_id) as attendees_number
+            w.phase as state,
+            count(attends.workshop_id) as attendees_number
         FROM workshops as w
-        INNER JOIN propose
-        on propose.profile_id = $1
-        AND propose.workshop_id = w.id
-        LEFT JOIN attend
-        on attend.workshop_id = w.id
+        INNER JOIN proposes
+        on proposes.profile_id = $1
+        AND proposes.workshop_id = w.id
+        LEFT JOIN attends
+        on attends.workshop_id = w.id
         GROUP BY
-        attend.workshop_id,
+        attends.workshop_id,
         w.id,
         w.title,
         w.start_datetime,
         w.min_number,
         w.max_number,
         w.deadline,
-        w.state;
+        w.phase;
     `;
 
     const attendSQL = `
         SELECT
           w.title,
           w.start_datetime,
-          w.state
+          w.phase as state
         FROM workshops as w
-        INNER JOIN attend
-        on attend.profile_id = $1
-        AND attend.workshop_id = w.id;
+        INNER JOIN attends
+        on attends.profile_id = $1
+        AND attends.workshop_id = w.id;
     `;
 
 
     const comeUPWithSQL = `
         SELECT
             i.id as i_id,
-            i.ideas_type,
+            i.idea_type,
             i.skill,
             count(likes.idea_id) as like_number
         FROM ideas as i
-        INNER JOIN come_ups as c
+        INNER JOIN come_up_withs as c
         on c.profile_id = $1 AND c.idea_id = i.id
         LEFT JOIN likes
         on likes.idea_id = i.id
         GROUP BY
             i.id,
-            i.ideas_type,
+            i.idea_type,
             i.skill;
     `;
 
     const likesSQL = `
         SELECT
             i.id as i_id,
-            i.ideas_type,
+            i.idea_type,
             i.skill,
             count(i.id = l1.idea_id) as like_number
         FROM ideas as i
@@ -127,7 +127,7 @@ function show(fb_id) {
         AND l2.idea_id = i.id
         GROUP BY
             i.id,
-            i.ideas_type,
+            i.idea_type,
             i.skill;
     `;
 
