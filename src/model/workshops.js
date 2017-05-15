@@ -3,6 +3,9 @@ if (!global.db) {
     db = pgp(process.env.DB_URL);
 }
 
+
+const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
+
 function list(searchText, stateFilter) {
     const cur_time = Date.now()/1000;
 
@@ -91,7 +94,7 @@ function propose(
     deadline,
     introduction,
     price,
-    phase
+    state
 ){
     const workshopsSQL = `
         INSERT INTO workshops ($<this:name>)
@@ -107,7 +110,7 @@ function propose(
             $<deadline>,
             $<introduction>,
             $<price>,
-            $<phase>
+            $<state>
         )
         RETURNING workshops.id as w_id;
     `;
@@ -131,7 +134,7 @@ function propose(
         deadline,
         introduction,
         price,
-        phase
+        state
     }).then(workshops => {
         db.none(proposeSQL, [fb_id, workshops.id]);
         return workshops;
@@ -144,17 +147,34 @@ function propose(
 
 // Show
 function show(w_id, fb_id) {
-
-    const profilesSQL = `
-        SELECT profiles.id
-        FROM profiles
-        WHERE $1 = profiles.fb_userid;
+    const stateSQL = `
+        SELECT workshops.state
+        FROM workshops
+        WHERE workshops.id = $1
     `;
 
-    const attend_countSQL = `
-        SELECT count(a.profile_id)
-        FROM attends as a
-        WHERE a.workshop_id = $1 AND a.profile_id = $2;
+    const infoSQL =  `
+        SELECT
+            w.pre_deadline,
+            w.min_number,
+            w.start_datetime,
+            w.end_datetime,
+            count(attends.profile_id) as attendees_number
+        FROM workshops as w
+        INNER JOIN attends
+        on w.id = $1
+        AND attends.workshop_id = $1
+        GROUP BY
+            w.pre_deadline,
+            w.min_number,
+            w.start_datetime,
+            w.end_datetime;
+    `;
+
+    const state_updateSQL = `
+        UPDATE workshops
+        SET workshops.sate = $2
+        WHERE workshops.id = $1;
     `;
 
     const workshopsSQL = `
@@ -170,14 +190,15 @@ function show(w_id, fb_id) {
             w.pre_deadline,
             w.introduction,
             w.price,
-            w.phase,
             profiles.name as name,
-            bool_and($2 != 0) as attended
+            bool_or(attends.profile_id = $2) as attended
         FROM workshops as w
         INNER JOIN proposes
         on w.id = $1 AND proposes.workshop_id = $1
         INNER JOIN profiles
         on profiles.id = proposes.profile_id
+        LEFT JOIN attends
+        on attends.workshop_id = $1
         GROUP BY
             w.image_url,
             w.start_datetime,
@@ -190,101 +211,131 @@ function show(w_id, fb_id) {
             w.pre_deadline,
             w.introduction,
             w.price,
-            w.phase,
             profiles.name;
     `;
 
-    const ori_workshopsSQL = `
-        SELECT *, $2
-        FROM workshops
-        WHERE workshops.id = $1;
-    `;
 
-    if(fb_id !== null) {
-        return db.one(profilesSQL, fb_id)
-        .then(profiles => {
-            return db.one(attend_countSQL, [w_id, profiles.id])
-            .then(attendCount => {
-                return db.one(workshopsSQL, [w_id, attendCount.count]);
-            }).catch(error => {
-                console.log('ERROR:', error); // print the error;
-            });
-        }).catch(error => {
-            console.log('ERROR:', error); // print the error;
+    var phase = db.one(stateSQL, w_id).then (w => {
+        if (w.state === 'judging') {
+            return 'judging';
+        } else if (w.state === 'judge_na') {
+            return 'judge_na';
+        } else if (w.state === 'judge_ac') {
+            return db.one(infoSQL, w_id).then(info => {
+                const time = Date.now()/1000;
+                if ((+info.pre_deadline) < time) {
+                    //next_state = 3;
+                    db.none(state_updateSQL, [w_id, 'unreached']);
+                    return 'unreached'; // 未達標
+                }
+                if ((+info.pre_deadline) >= time && (+info.attendees_number) < (+info.min_number)) {
+                    //next_state = 2;
+                    return 'investigating'; // 調查中
+                }
+                if ((+info.pre_deadline) >= time && (+info.attendees_number) >= (+info.min_number)) {
+                    //next_state = 4;
+                    db.none(state_updateSQL, [w_id, 'reached']);
+                    return 'reached'; // 已達標
+                }
+            })
+        } else if (w.state === 'unreached') {
+            return 'unreached';
+        } else if (w.state === 'reached') {
+            if ((+start_datetime) >= time) {
+                //next_state = 4;
+                return 'reached'; // 已達標
+            }
+            if ((+end_datetime) < time) {
+                //next_state = 4;
+                return 'over'; // 已結束
+            }
+        }
+    })
+
+    var workshops = db.task(t => {
+        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+            return t.one(workshopsSQL, [w_id, p_id]);
         });
-    }
-    else {
-        return db.one(ori_workshopsSQL, [w_id, false]);
-    }
-}
+    });
 
+
+    return Promise.all([workshops, phase]).then(([workshops, phase]) => {
+        workshops.phase = phase;
+        return new Promise((resolve, reject) => {
+            resolve(workshops);
+        })
+    })
+}
 
 
 // Attend
 function attend(w_id, fb_id) {
+    const stateSQL = `
+        SELECT workshops.state
+        FROM workshops
+        WHERE workshops.id = $1
+    `;
+
+    const infoSQL =  `
+        SELECT w.pre_deadline
+        FROM workshops as w
+        WHERE w.id = $1;
+    `;
+
+    const state_updateSQL = `
+        UPDATE workshops
+        SET workshops.sate = $2
+        WHERE workshops.id = $1;
+    `;
 
     const profilesSQL = `
         SELECT profiles.id
         FROM profiles
-        WHERE $1 = profiles.fb_userid;
+        WHERE profiles.fb_userid = $1;
     `;
 
-    const attendSQL = `
-        INSERT INTO attends
-        VALUES ($2, $1)
-        RETURNING *;
+    const toggle_attendSQL = `
+    DO
+    $do$
+    BEGIN
+    IF (SELECT COUNT(*) FROM attends WHERE profile_id=$1 AND workshop_id=$2) > 0 THEN
+    DELETE FROM attends WHERE profile_id=$1 AND workshop_id=$2;
+    ELSE
+    INSERT INTO attends VALUES ($1, $2);
+    END IF;
+    END
+    $do$;
     `;
 
-    const phaseSQL = `
-        SELECT bool_or(attends.profile_id = $2) as attended
+    const attend_checkSQL = `
+        SELECT count(attends.profile_id) as attended
         FROM attends
-        WHERE attends.workshop_id = $1;
+        WHERE attends.profile_id = $1 AND attends.workshop_id = $2;
     `;
 
-    return db.one(profilesSQL, fb_id)
-    .then(profiles => {
-        return db.one(attendSQL, [w_id, profiles.id])
-        .then(attend => {
-            return db.one(phaseSQL, [w_id, profiles.id]);
-        }).catch(error => {
-            console.log('ERROR:', error); // print the error;
-        });
-    }).catch(error => {
-        console.log('ERROR:', error); // print the error;
+    return db.one(stateSQL, w_id).then(w => {
+        if (w.state === 'judge_ac') {
+            return db.one(infoSQL, w_id).then(info => {
+                if ((+info.pre_deadline) < Date.now()/1000) {
+                    db.none(state_updateSQL, [w_id, 'unreached']);
+                    return {attended: "0"};
+                } else {
+                    return db.one(profilesSQL, fb_id).then(profiles => {
+                        return db.none(toggle_attendSQL, [profiles.id, w_id]).then(() => {
+                            return db.one(attend_checkSQL, [profiles.id, w_id]);
+                        })
+                    });
+                }
+            });
+        } else {
+            return {attended: "0"};
+        }
     });
 }
-
-
-
-// Unattend
-function unattend(w_id, fb_id) {
-    const unattendSQL = `
-        DELETE FROM attends
-        WHERE attends.profile_id = $2
-        AND attends.workshop_id = $1;
-    `;
-
-    return db.one(profilesSQL, fb_id)
-    .then(profiles => {
-        return db.one(unattendSQL, [w_id, profiles.id])
-        .then(unattend => {
-            return true;
-        }).catch(error => {
-            console.log('ERROR:', error); // print the error;
-            return false;
-        });
-    }).catch(error => {
-        console.log('ERROR:', error); // print the error;
-        return false;
-    });
-}
-
-
 
 module.exports = {
     propose,
     show,
     attend,
-    unattend,
     list
 };

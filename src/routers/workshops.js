@@ -138,6 +138,8 @@ router.post('/workshops/:w_id', function(req, res, next) {
     }
 
     workshopsModel.attend(w_id, fbID).then(attendState => {
+        if(attendState.attended === '0') attendState.attended = false;
+        else  attendState.attended = true;
         res.json(attendState);
     }).catch(next);
 
