@@ -81,14 +81,14 @@ function show(fb_id) {
         w.min_number,
         w.max_number,
         w.deadline,
-        w.phase;
+        w.state;
     `;
 
     const attendSQL = `
         SELECT
           w.title,
           w.start_datetime,
-          w.phase as state
+          w.state
         FROM workshops as w
         INNER JOIN attends
         on attends.profile_id = $1
