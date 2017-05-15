@@ -48,6 +48,7 @@ router.get('/ideas/:i_id', function(req, res, next) {
     }
 
     ideasModel.show(i_id, fbID).then(ideas => {
+		ideas.like_number = (+ ideas.like_number);
         res.json(ideas);
     }).catch(next);
 });
@@ -64,6 +65,7 @@ router.get('/ideas', function(req, res, next) {
 	ideasModel.list(searchText, order, fbID).then((ideas=[]) => {
 		for (let idea of ideas) {
 			idea.liked = (idea.liked=="1");
+			idea.like_number = (+ idea.like_number);
 		}
 		res.json(ideas);
 	}).catch(next);
@@ -84,9 +86,10 @@ router.post('/ideas/:i_id', function(req, res, next) {
         throw err;
 	}
 
-	ideasModel.like(i_id, fb_id).then(ret => {
+	ideasModel.like(i_id, fb_id).then(ret_idea => {
 		// {i_id, like_number, liked: boolean}
-		res.json(ret);
+		ret_idea.like_number = (+ ret_idea.like_number);
+		res.json(ret_idea);
 	}).catch(next);
 });
 
