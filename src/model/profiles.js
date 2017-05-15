@@ -65,7 +65,7 @@ function show(fb_id) {
             w.min_number,
             w.max_number,
             w.deadline,
-            w.phase as state,
+            w.state,
             count(attends.workshop_id) as attendees_number
         FROM workshops as w
         INNER JOIN proposes
@@ -149,11 +149,29 @@ function show(fb_id) {
 }
 
 function updateAvailableTime(fb_id, available_time) {
-    
+    // {fb_id} => {p_id}
+    const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
+    const sql = `
+        UPDATE profiles
+        SET available_time=$<avai_time>
+        WHERE id = $<p_id>
+        RETURNING available_time
+    `;
+    return db.task(t => {
+        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+            if (p_id ===0 ) {
+                const err = new Error('Cannot found this fb user in database');
+                err.status = 400;
+                throw err;
+            }
+            return t.one(sql, {p_id, avai_time: JSON.stringify(available_time)});
+        });
+    });
 }
 
 
 module.exports = {
     regOrLogin,
-    show
+    show,
+    updateAvailableTime,
 };

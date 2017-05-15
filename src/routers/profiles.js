@@ -61,9 +61,10 @@ router.put('/profile', (req, res, next) => {
                 err.status = 401;
                 throw err;
             }
-            profilesModel.updateAvailableTime(fbID, availableTime).then(newAvailableTime => {
-                // console.log(availableTime);
-                res.json(newAvailableTime);
+            profilesModel.updateAvailableTime(fbID, availableTime).then(new_avai_time => {
+                new_avai_time.availableTime = JSON.parse(new_avai_time.available_time);
+                delete new_avai_time.available_time;
+                res.json(new_avai_time);
             }).catch(next);
             break;
         default:
