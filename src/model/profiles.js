@@ -35,7 +35,7 @@ function regOrLogin(name, email, fb_userid, picture_url) {
         RETURNING id as p_id;
     `;
 
-    var available_time = 'false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false';
+    var available_time = '[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]';
     var authority = 'user';
     return db.one(checkSQL, fb_userid)
     .then(state => {
@@ -139,7 +139,7 @@ function show(fb_id) {
         var comeUPWith = db.any(comeUPWithSQL, profiles.id);
         var like = db.any(likesSQL, profiles.id);
 
-        return Promise.all([profiles.available_time, propose, attend, comeUPWith, like])
+        return Promise.all([JSON.parse(profiles.available_time), propose, attend, comeUPWith, like])
         .then(([available_time,[propose],[attend],[comeUPWith],[like]]) => {
             return new Promise((resolve, reject) => {
                 resolve({available_time, propose, attend, comeUPWith, like});
