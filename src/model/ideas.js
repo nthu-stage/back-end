@@ -144,7 +144,7 @@ function show (i_id, fb_id) {
 
             return Promise.all([ideas, mostAvaiTime])
             .then(([ideas, mostAvaiTime]) => {
-              ideas.mostAvaiTime = mostAvaiTime;
+                ideas.mostAvaiTime = mostAvaiTime;
                 return new Promise((resolve, reject) => {
                     resolve(ideas);
                 })
@@ -187,7 +187,7 @@ function like(i_id, fb_id) {
     const toggle_like_sql = `
     DO
     $do$
-    bEGIN
+    BEGIN
     IF (SELECT COUNT(*) FROM likes WHERE profile_id=$<p_id> AND idea_id=$<i_id>) > 0 THEN
     DELETE FROM likes WHERE profile_id=$<p_id> AND idea_id=$<i_id>;
     ELSE
