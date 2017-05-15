@@ -135,7 +135,7 @@ function show (i_id, fb_id) {
                 }
 
                 available.sort(function(a,b){ return b.people - a.people});
-                console.log(available);
+                // console.log(available);
                 return available.slice(0, 5);
             })
 
