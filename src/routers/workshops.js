@@ -41,6 +41,7 @@ router.get('/workshops/:w_id', function(req, res, next) {
         fn.prop_ts_2_datestring(workshop, 'end_datetime');
         fn.prop_ts_2_datestring(workshop, 'deadline');
         fn.prop_ts_2_datestring(workshop, 'pre_deadline');
+        if (workshop.attended === null) workshop.attended = false;
         res.json(workshop);
     }).catch(next);
     // res.json({

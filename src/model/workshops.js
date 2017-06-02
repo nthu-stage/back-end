@@ -118,7 +118,8 @@ function propose(
         INSERT INTO proposes
         SELECT profiles.id, workshops.id
         FROM profiles, workshops
-        WHERE profiles.fb_userid = $1 AND workshops.id = $2;
+        WHERE profiles.fb_userid = $1 AND workshops.id = $2
+        RETURNING workshop_id;
     `;
 
     return db.one(workshopsSQL, {
@@ -135,8 +136,7 @@ function propose(
         price,
         state
     }).then(workshops => {
-        db.none(proposeSQL, [fb_id, workshops.id]);
-        return workshops;
+        return db.one(proposeSQL, [fb_id, workshops.w_id]);
     }).catch(error => {
         console.log('ERROR:', error); // print the error;
     });
