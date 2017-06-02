@@ -332,9 +332,30 @@ function attend(w_id, fb_id) {
     });
 }
 
+// attendees (dashboard)
+function attendees(w_id, fb_id) {
+    // TODO: check author
+    const attendees_id_sql = `
+    SELECT profile_id FROM attends WHERE workshop_id=$<w_id>
+    `;
+
+    const sql = `
+    SELECT name, email
+    FROM profiles
+    INNER JOIN (
+        ${attendees_id_sql}
+    ) AS a
+    ON id=a.profile_id
+    `;
+
+    return db.any(sql, {w_id});
+}
+
+
 module.exports = {
     propose,
     show,
     attend,
-    list
+    list,
+    attendees
 };
