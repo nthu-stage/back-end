@@ -72,7 +72,6 @@ function list(searchText, stateFilter) {
                         // case "all":
                         //     return true;
                         default:
-                            console.log("default case");
                             return (w.phase=='reached') || (w.phase=='investigating');
                     }
                 });

@@ -4,6 +4,8 @@ const profilesModel = require('../model/profiles.js');
 const ideasModel = require('../model/ideas.js');
 const workshopsModel = require('../model/workshops.js');
 
+const fn = require('../fn.js');
+
 const router = express.Router();
 
 router.use(bodyParser.json());
@@ -13,6 +15,10 @@ router.get('/workshops', function(req, res, next) {
     const {searchText, stateFilter} = req.query;
 
     workshopsModel.list(searchText, stateFilter).then(workshops => {
+        for (let w of workshops) {
+            fn.prop_ts_2_datestring(w, 'deadline');
+            fn.prop_ts_2_datestring(w, 'pre_deadline');
+        }
         res.json(workshops);
     }).catch(next);
 });
@@ -30,8 +36,12 @@ router.get('/workshops/:w_id', function(req, res, next) {
         throw err;
     }
 
-    workshopsModel.show(w_id, fbID) .then(workshops => {
-        res.json(workshops);
+    workshopsModel.show(w_id, fbID) .then(workshop => {
+        fn.prop_ts_2_datestring(workshop, 'start_datetime');
+        fn.prop_ts_2_datestring(workshop, 'end_datetime');
+        fn.prop_ts_2_datestring(workshop, 'deadline');
+        fn.prop_ts_2_datestring(workshop, 'pre_deadline');
+        res.json(workshop);
     }).catch(next);
     // res.json({
     //     "method": "GET",

@@ -1,6 +1,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const profilesModel = require('../model/profiles.js');
+const fn = require('../fn.js');
+
 const router = express.Router();
 
 router.use(bodyParser.json());
@@ -36,6 +38,8 @@ router.get('/profile', function(req, res, next) {
         throw err;
     }
     profilesModel.show(fbID).then(profiles => {
+        fn.prop_ts_2_datestring(profiles.propose, "start_datetime");
+        fn.prop_ts_2_datestring(profiles.propose, "deadline");
         res.json(profiles);
     }).catch(next);
 })
