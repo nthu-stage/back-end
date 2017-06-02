@@ -96,7 +96,7 @@ function show(fb_id) {
     `;
 
 
-    const comeUPWithSQL = `
+    const comeUpWithSQL = `
         SELECT
             i.id as i_id,
             i.idea_type,
@@ -136,13 +136,13 @@ function show(fb_id) {
 
         var propose = db.any(proposeSQL, profiles.id);
         var attend = db.any(attendSQL, profiles.id);
-        var comeUPWith = db.any(comeUPWithSQL, profiles.id);
+        var comeUpWith = db.any(comeUpWithSQL, profiles.id);
         var like = db.any(likesSQL, profiles.id);
 
-        return Promise.all([JSON.parse(profiles.available_time), propose, attend, comeUPWith, like])
-        .then(([available_time,propose,attend,comeUPWith,like]) => {
+        return Promise.all([JSON.parse(profiles.available_time), propose, attend, comeUpWith, like])
+        .then(([available_time,propose,attend,comeUpWith,like]) => {
             return new Promise((resolve, reject) => {
-                resolve({available_time, propose, attend, comeUPWith, like});
+                resolve({available_time, propose, attend, comeUpWith, like});
             })
         })
     })
