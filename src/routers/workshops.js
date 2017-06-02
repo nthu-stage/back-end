@@ -1,7 +1,5 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const accessController = require('../middleware/access-controller.js');
-
 const profilesModel = require('../model/profiles.js');
 const ideasModel = require('../model/ideas.js');
 const workshopsModel = require('../model/workshops.js');
@@ -9,7 +7,6 @@ const workshopsModel = require('../model/workshops.js');
 const router = express.Router();
 
 router.use(bodyParser.json());
-router.use(accessController); // Allows cross-origin HTTP requests
 
 // list
 router.get('/workshops', function(req, res, next) {

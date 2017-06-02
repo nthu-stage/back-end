@@ -8,17 +8,19 @@ const ideaRouter = require('./routers/ideas.js');
 // const requestLogger = require('./middleware/request-logger.js');
 const fbChecker = require('./middleware/fb-checker.js');
 const errorHandler = require('./middleware/error-handler.js');
+const accessController = require('./middleware/access-controller.js');
 
 const app = express();
 
+
 // app.use(requestLogger); // debug only
+app.use(accessController);
 app.use(fbChecker);
 // app.use(express.static('dist', {
 //     setHeaders: (res, path, stat) => {
 //         res.set('Cache-Control', 'public, s-maxage=86400');
 //     }
 // }));
-// app.use('/api', postRouter);
 app.use('/api', workshopRouter);
 app.use('/api', profileRouter);
 app.use('/api', ideaRouter);

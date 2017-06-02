@@ -1,14 +1,10 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const accessController = require('../middleware/access-controller.js');
-
 const ideasModel = require('../model/ideas.js');
-
 
 const router = express.Router();
 
 router.use(bodyParser.json());
-router.use(accessController); // Allows cross-origin HTTP requests
 
 // ComeUpWith
 router.post('/ideas', function(req, res, next) {
