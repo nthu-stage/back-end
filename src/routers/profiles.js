@@ -1,13 +1,9 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const accessController = require('../middleware/access-controller.js');
-
 const profilesModel = require('../model/profiles.js');
-
 const router = express.Router();
 
 router.use(bodyParser.json());
-router.use(accessController);
 
 //  regOrLogin
 router.post('/profile', function(req, res, next) {
