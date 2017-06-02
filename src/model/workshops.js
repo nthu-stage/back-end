@@ -69,8 +69,8 @@ function list(searchText, stateFilter) {
                         case "2":
                             return w.phase=='investigating';
                         // debug only
-                        // case "all":
-                        //     return true;
+                        case "all":
+                            return true;
                         default:
                             return (w.phase=='reached') || (w.phase=='investigating');
                     }
@@ -240,11 +240,11 @@ function show(w_id, fb_id) {
         } else if (w.state === 'unreached') {
             return 'unreached';
         } else if (w.state === 'reached') {
-            if ((+start_datetime) >= time) {
+            if ((+w.start_datetime) >= w.time) {
                 //next_state = 4;
                 return 'reached'; // 已達標
             }
-            if ((+end_datetime) < time) {
+            if ((+w.end_datetime) < w.time) {
                 //next_state = 4;
                 return 'over'; // 已結束
             }

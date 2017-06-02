@@ -22,6 +22,7 @@ module.exports = function(err, req, res, next) {
 	];
 	console.log(msg.join('\n'));
 
+    // TODO: remove this when production, security reason
 	res.status(status).send(msg.join('\n'));
 
     // res.sendStatus(err.status ? err.status : 500);
