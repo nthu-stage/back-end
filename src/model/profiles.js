@@ -140,7 +140,7 @@ function show(fb_id) {
         var like = db.any(likesSQL, profiles.id);
 
         return Promise.all([JSON.parse(profiles.available_time), propose, attend, comeUPWith, like])
-        .then(([available_time,[propose],[attend],[comeUPWith],[like]]) => {
+        .then(([available_time,propose,attend,comeUPWith,like]) => {
             return new Promise((resolve, reject) => {
                 resolve({available_time, propose, attend, comeUPWith, like});
             })
