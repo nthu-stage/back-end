@@ -44,7 +44,8 @@ router.get('/ideas/:i_id', function(req, res, next) {
     }
 
     ideasModel.show(i_id, fbID).then(ideas => {
-		ideas.like_number = (+ ideas.like_number);
+		    ideas.like_number = (+ ideas.like_number);
+        if(ideas.liked === null) ideas.liked = false;
         res.json(ideas);
     }).catch(next);
 });
