@@ -25,18 +25,18 @@ router.get('/workshops', function(req, res, next) {
 
 // show
 router.get('/workshops/:w_id', function(req, res, next) {
-    var fbID = req.get('userID');
-    if (fbID === undefined) {
-        fbID = null;
+    var fb_id = req.get('userID');
+    if (fb_id === undefined) {
+        fb_id = null;
     }
     const {w_id} = req.params;
     if (!w_id) {
-        const err = new Error('Show workshop page, workshop ID is required.');
+        const err = new Error('workshop ID required. (show)');
         err.status = 400;
         throw err;
     }
 
-    workshopsModel.show(w_id, fbID) .then(workshop => {
+    workshopsModel.show(w_id, fb_id) .then(workshop => {
         fn.tsWrapper(workshop, 'start_datetime');
         fn.tsWrapper(workshop, 'end_datetime');
         fn.tsWrapper(workshop, 'deadline');
@@ -44,38 +44,14 @@ router.get('/workshops/:w_id', function(req, res, next) {
         if (workshop.attended === null) workshop.attended = false;
         res.json(workshop);
     }).catch(next);
-    // res.json({
-    //     "method": "GET",
-    //     "action": "show()",
-    //     "params": req.params,
-    //     "query": req.query,
-    //     "body": req.body,
-    //     fb_id,
-    //     w_id,
-    // })
-
-    // res.json({
-    //     "method": "GET",
-    //     "action": "show()",
-    //     "params": req.params,
-    //     "query": req.query,
-    //     "body": req.body,
-    //     fbID,
-    //     w_id,
-    // })
-
-    // [TODO]: work with workshopsModel.show().
-    // workshopsModel.show(w_id).then(workshop => {
-    //   res.json(workshop);
-    // }).catch(next);
 })
 
 
 // propose
 router.post('/workshops', function(req, res, next) {
-    const fbID = req.get('userID');
-    if (fbID === undefined) {
-        const err = new Error('proposing a workshop need to login');
+    const fb_id = req.get('userID');
+    if (fb_id === undefined) {
+        const err = new Error('You need to login. (propose)');
         err.status = 401;
         throw err;
     }
@@ -112,7 +88,7 @@ router.post('/workshops', function(req, res, next) {
     }
 
     workshopsModel.propose(
-        fbID,
+        fb_id,
         image_url,
         new Date(start_datetime).getTime(),
         new Date(end_datetime).getTime(),
@@ -132,9 +108,9 @@ router.post('/workshops', function(req, res, next) {
 
 // attend
 router.post('/workshops/:w_id', function(req, res, next) {
-    const fbID = req.get('userID');
+    const fb_id = req.get('userID');
     const {w_id} = req.params;
-    if (fbID === undefined) {
+    if (fb_id === undefined) {
         const err = new Error('attending a workshop need to login');
         err.status = 401;
         throw err;
@@ -145,7 +121,7 @@ router.post('/workshops/:w_id', function(req, res, next) {
         throw err;
     }
 
-    workshopsModel.attend(w_id, fbID).then(attendState => {
+    workshopsModel.attend(w_id, fb_id).then(attendState => {
         if(attendState.attended === '0') attendState.attended = false;
         else  attendState.attended = true;
         res.json(attendState);
@@ -161,7 +137,7 @@ router.post('/workshops/:w_id', function(req, res, next) {
 router.delete('/workshops/:w_id', function(req, res, next) {
     const fb_id = req.get('userID');
     if (fb_id === undefined) {
-        const err = new Error('You need to login.');
+        const err = new Error('You need to login. (propose)');
         err.status = 401;
         throw err;
     }
