@@ -5,6 +5,11 @@ if (!global.db) {
 
 
 const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
+const check_author_sql = `
+    SELECT COUNT(*) AS is_author
+    FROM proposes
+    WHERE profile_id=$<p_id> AND workshop_id=$<w_id>
+`;
 
 function list(searchText, stateFilter) {
     const cur_time = Date.now()/1000;
@@ -334,7 +339,6 @@ function attend(w_id, fb_id) {
 
 // attendees (dashboard)
 function attendees(w_id, fb_id) {
-    // TODO: check author
     const attendees_id_sql = `
     SELECT profile_id FROM attends WHERE workshop_id=$<w_id>
     `;
@@ -348,9 +352,24 @@ function attendees(w_id, fb_id) {
     ON id=a.profile_id
     `;
 
-    return db.any(sql, {w_id});
+    return db.task(t => {
+        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+            if (p_id ===0 ) {
+                const err = new Error('Cannot found this fb user in database.');
+                err.status = 400;
+                throw err;
+            }
+            return t.one(check_author_sql, {p_id, w_id}).then(( {is_author} ) => {
+                if (is_author == "0") {
+                    const err = new Error('Cannot match user and workshop.');
+                    err.status = 400;
+                    throw err;
+                }
+                return t.any(sql, {w_id});
+            });
+        });
+    });
 }
-
 
 module.exports = {
     propose,

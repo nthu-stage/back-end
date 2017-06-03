@@ -241,7 +241,7 @@ function remove(i_id, fb_id) {
             }
             return t.one(check_author_sql, {p_id, i_id}).then(( {is_author} ) => {
                 if (is_author == "0") {
-                    const err = new Error('Cannot match profile and idea: not author or idea not exist');
+                    const err = new Error('Cannot match profile and idea: not author or idea does not exist');
                     err.status = 400;
                     throw err;
                 }
@@ -277,7 +277,7 @@ function update(i_id, fb_id, skill, goal, web_url, image_url) {
             }
             return t.one(check_author_sql, {p_id, i_id}).then(( {is_author} ) => {
                 if (is_author == "0") {
-                    const err = new Error('Cannot match profile and idea: not author or idea not exist');
+                    const err = new Error('Cannot match profile and idea: not author or idea does not exist');
                     err.status = 400;
                     throw err;
                 }
