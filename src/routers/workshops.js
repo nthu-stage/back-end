@@ -151,21 +151,30 @@ router.post('/workshops/:w_id', function(req, res, next) {
         res.json(attendState);
     }).catch(next);
 
-    // res.json({
-    //     "method": "POST",
-    //     "action": "attend()",
-    //     "params": req.params,
-    //     "query": req.query,
-    //     "body": req.body,
-    //     fb_id,
-    //     w_id,
-    // })
-
-
     // [TODO]: work with workshopsModel.attend().
     // voteModel.create(id, mood).then(post => {
     //     res.json(post);
     // }).catch(next);
+});
+
+// delete
+router.delete('/workshops/:w_id', function(req, res, next) {
+    const fb_id = req.get('userID');
+    if (fb_id === undefined) {
+        const err = new Error('You need to login.');
+        err.status = 401;
+        throw err;
+    }
+    const {w_id} = req.params;
+    if (!w_id) {
+        const err = new Error('workshop ID required. (delete)');
+        err.status = 400;
+        throw err;
+    }
+
+    workshopsModel.delete(w_id, fb_id).then(() => {
+        res.sendStatus(200);
+    }).catch(next);
 });
 
 module.exports = router;

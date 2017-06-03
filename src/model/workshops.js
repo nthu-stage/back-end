@@ -371,10 +371,35 @@ function attendees(w_id, fb_id) {
     });
 }
 
+function delete_(w_id, fb_id) {
+    const sql = `
+        DELETE FROM workshops
+        WHERE id=$<w_id>
+    `;
+    return db.task(t => {
+        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+            if (p_id ===0 ) {
+                const err = new Error('Cannot found this fb user in database.');
+                err.status = 400;
+                throw err;
+            }
+            return t.one(check_author_sql, {p_id, w_id}).then(( {is_author} ) => {
+                if (is_author == "0") {
+                    const err = new Error('Cannot match user and workshop.');
+                    err.status = 400;
+                    throw err;
+                }
+                return t.none(sql, {w_id});
+            });
+        });
+    });
+}
+
 module.exports = {
     propose,
     show,
     attend,
     list,
-    attendees
+    attendees,
+    delete: delete_,
 };
