@@ -2,6 +2,8 @@ require('../../config.js');
 const pgp = require('pg-promise')();
 const db = pgp(process.env.DB_URL);
 
+const day_ms=24*3600*1000;
+
 const drop_schema_sql = `
 -- Drop
 DROP TABLE IF EXISTS come_up_withs;
@@ -48,9 +50,9 @@ CREATE TABLE profiles (
     picture_url         text NOT NULL,
     authority           authority NOT NULL,
     available_time      text NOT NULL,
-    last_login_datetime bigint NOT NULL DEFAULT (extract(epoch from now())),
-    created_at          bigint NOT NULL DEFAULT (extract(epoch from now())),
-    updated_at          bigint NOT NULL DEFAULT (extract(epoch from now()))
+    last_login_datetime bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
+    created_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
 CREATE INDEX profiles_idx_created_at ON profiles USING btree(created_at);
 CREATE INDEX profiles_idx_updated_at ON profiles USING btree(updated_at);
@@ -62,19 +64,19 @@ CREATE TABLE workshops (
     id                  serial PRIMARY KEY NOT NULL,
     image_url           text,
     title               text NOT NULL,
-    start_datetime      bigint NOT NULL DEFAULT (extract(epoch from now())),
-    end_datetime        bigint NOT NULL DEFAULT (extract(epoch from now())),
+    start_datetime      bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
+    end_datetime        bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
     min_number          integer NOT NULL DEFAULT 0,
     max_number          integer NOT NULL DEFAULT 0,
-    deadline            bigint NOT NULL DEFAULT (extract(epoch from now())),
-    pre_deadline        bigint NOT NULL DEFAULT (extract(epoch from now())),
+    deadline            bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
+    pre_deadline        bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
     location            text NOT NULL,
     introduction        text NOT NULL DEFAULT '',
     content             text NOT NULL DEFAULT '',
     state               state NOT NULL,
     price               integer NOT NULL DEFAULT 0,
-    created_at          bigint NOT NULL DEFAULT (extract(epoch from now())),
-    updated_at          bigint NOT NULL DEFAULT (extract(epoch from now()))
+    created_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
 `;
 
@@ -92,8 +94,8 @@ CREATE TABLE ideas (
     goal       text NOT NULL,
     web_url    text,
     image_url  text,
-    created_at bigint NOT NULL DEFAULT (extract(epoch from now())),
-    updated_at bigint NOT NULL DEFAULT (extract(epoch from now()))
+    created_at bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at bigint NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
 CREATE INDEX ideas_idx_created_at ON ideas USING btree(created_at);
 CREATE INDEX ideas_idx_updated_at ON ideas USING btree(updated_at);
@@ -157,7 +159,7 @@ INSERT INTO profiles(
     picture_url,
     authority,
     available_time,
-    last_login_datetime,
+    -- last_login_datetime,
     created_at,
     updated_at
 )
@@ -168,9 +170,9 @@ VALUES(
     '${names[i]}_photo_url',
     'user',
     '${genRandomAvaiTime()}',
-    ${Date.now()/1000 - (n-i)*3600},
-    ${Date.now()/1000 - (n-i)*3600},
-    ${Date.now()/1000 - (n-i)*3600}
+    -- ${Date.now() - (n-i) * day_ms},
+    ${Date.now() - (n-i) * day_ms},
+    ${Date.now() - (n-i) * day_ms}
 );
     `;
     }
@@ -201,17 +203,17 @@ INSERT INTO workshops(
 )
 VALUES(
     '${titles[i]}',
-    ${Date.now()/1000 - (n-i)*3600 + 72000},
-    ${Date.now()/1000 - (n-i)*3600 + 90000},
+    ${Date.now() - (n-i)*day_ms},
+    ${Date.now() - (n-i)*day_ms + 3*day_ms},
     ${Math.floor(Math.random() * 10)},
     ${Math.floor(Math.random() * 30)+10},
-    ${Date.now()/1000 - (n-i)*3600 + 72000},
-    ${Date.now()/1000 - (n-i)*3600 + 36000},
+    ${Date.now() - (n-i)*day_ms - 10*day_ms},
+    ${Date.now() - (n-i)*day_ms - 15*day_ms},
     '${locations[i]}',
     '${phases[i]}',
     ${Math.random() * 100},
-    ${Date.now()/1000},
-    ${Date.now()/1000}
+    ${Date.now()},
+    ${Date.now()}
 );
     `;
     }
@@ -242,8 +244,8 @@ VALUES(
     '${goals[i]}',
     'some_web_url',
     'some_image_url',
-    ${Date.now()/1000 - (n-i)*3600},
-    ${Date.now()/1000 - (n-i)*3600}
+    ${Date.now() - (n-i)*day_ms},
+    ${Date.now() - (n-i)*day_ms}
 );
     `;
     }
