@@ -166,9 +166,9 @@ function show(w_id, fb_id) {
     `;
 
     const attendees_numberSQL = `
-        SELECT count(*) as attendees_number
+        SELECT count(*)
         FROM attends
-        WHERE workshop_id = $1
+        WHERE workshop_id = $1;
     `;
 
     const state_updateSQL = `
@@ -230,7 +230,7 @@ function show(w_id, fb_id) {
                     db.none(state_updateSQL, [w_id, 'unreached']);
                     return 'unreached'; // 未達標
                 } else {
-                    return db.one(attendees_number => {
+                    return db.one(attendees_numberSQL, w_id).then(attendees_number => {
                         if (attendees_number < info.min_number) {
                             //next_state = 2;
                             return 'investigating'; // 調查中
@@ -239,7 +239,7 @@ function show(w_id, fb_id) {
                             db.none(state_updateSQL, [w_id, 'reached']);
                             return 'reached'; // 已達標
                         }
-                    })
+                    });
                 }
             })
         } else if (w.state === 'unreached') {
