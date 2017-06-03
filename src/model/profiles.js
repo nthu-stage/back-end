@@ -86,6 +86,7 @@ function show(fb_id) {
 
     const attendSQL = `
         SELECT
+          w.id AS w_id,
           w.title,
           w.start_datetime,
           w.state
