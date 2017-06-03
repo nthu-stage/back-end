@@ -352,15 +352,8 @@ function attendees(w_id, fb_id) {
     ON id=a.profile_id
     `;
 
-    return db.any(sql, {w_id});
     return db.task(t => {
         return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
-
-        });
-    });
-    return db.task(t => {
-        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
-            console.log(`p_id = ${p_id}`);
             if (p_id ===0 ) {
                 const err = new Error('Cannot found this fb user in database.');
                 err.status = 400;
@@ -368,11 +361,11 @@ function attendees(w_id, fb_id) {
             }
             return t.one(check_author_sql, {p_id, w_id}).then(( {is_author} ) => {
                 if (is_author == "0") {
-                    const err = new Error('Cannot match profile and idea: not author or workshop does not exist.');
+                    const err = new Error('Cannot match user and workshop.');
                     err.status = 400;
                     throw err;
                 }
-                return t.any(sql, [p_id, searchText]);
+                return t.any(sql, {w_id});
             });
         });
     });
