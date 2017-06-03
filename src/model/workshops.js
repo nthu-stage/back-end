@@ -230,7 +230,7 @@ function show(w_id, fb_id) {
                     db.none(state_updateSQL, [w_id, 'unreached']);
                     return 'unreached'; // 未達標
                 } else {
-                    return db.one(attendees_numberSQL, w_id).then(attendees_number => {
+                    return db.one(attendees_numberSQL, w_id).then(({count: attendees_number}) => {
                         if (attendees_number < info.min_number) {
                             //next_state = 2;
                             return 'investigating'; // 調查中
