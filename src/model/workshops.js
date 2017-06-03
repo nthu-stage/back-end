@@ -119,7 +119,7 @@ function propose(
         SELECT profiles.id, workshops.id
         FROM profiles, workshops
         WHERE profiles.fb_userid = $1 AND workshops.id = $2
-        RETURNING workshop_id;
+        RETURNING workshop_id AS w_id;
     `;
 
     return db.one(workshopsSQL, {
