@@ -160,24 +160,20 @@ function show(w_id, fb_id) {
     const infoSQL =  `
         SELECT
             w.pre_deadline,
-            w.min_number,
-            w.start_datetime,
-            w.end_datetime,
-            count(attends.profile_id) as attendees_number
+            w.min_number
         FROM workshops as w
-        INNER JOIN attends
-        on w.id = $1
-        AND attends.workshop_id = $1
-        GROUP BY
-            w.pre_deadline,
-            w.min_number,
-            w.start_datetime,
-            w.end_datetime;
+        WHERE w.id = $1
+    `;
+
+    const attendees_numberSQL = `
+        SELECT count(*) as attendees_number
+        FROM attends
+        WHERE workshop_id = $1
     `;
 
     const state_updateSQL = `
         UPDATE workshops
-        SET workshops.sate = $2
+        SET state = $2
         WHERE workshops.id = $1;
     `;
 
@@ -233,15 +229,17 @@ function show(w_id, fb_id) {
                     //next_state = 3;
                     db.none(state_updateSQL, [w_id, 'unreached']);
                     return 'unreached'; // 未達標
-                }
-                if ((+info.pre_deadline) >= time && (+info.attendees_number) < (+info.min_number)) {
-                    //next_state = 2;
-                    return 'investigating'; // 調查中
-                }
-                if ((+info.pre_deadline) >= time && (+info.attendees_number) >= (+info.min_number)) {
-                    //next_state = 4;
-                    db.none(state_updateSQL, [w_id, 'reached']);
-                    return 'reached'; // 已達標
+                } else {
+                    return db.one(attendees_number => {
+                        if (attendees_number < info.min_number) {
+                            //next_state = 2;
+                            return 'investigating'; // 調查中
+                        } else  {
+                            //next_state = 4;
+                            db.none(state_updateSQL, [w_id, 'reached']);
+                            return 'reached'; // 已達標
+                        }
+                    })
                 }
             })
         } else if (w.state === 'unreached') {
@@ -290,7 +288,7 @@ function attend(w_id, fb_id) {
 
     const state_updateSQL = `
         UPDATE workshops
-        SET workshops.sate = $2
+        SET state = $2
         WHERE workshops.id = $1;
     `;
 
@@ -323,7 +321,9 @@ function attend(w_id, fb_id) {
         if (w.state === 'judge_ac') {
             return db.one(infoSQL, w_id).then(info => {
                 if ((+info.pre_deadline) < Date.now()) {
-                    db.none(state_updateSQL, [w_id, 'unreached']);
+                    db.none(state_updateSQL, [w_id, 'unreached']).catch(err=>{
+                        throw err;
+                    });
                     return {attended: "0"};
                 } else {
                     return db.one(profilesSQL, fb_id).then(profiles => {

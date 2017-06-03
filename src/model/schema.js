@@ -203,12 +203,12 @@ INSERT INTO workshops(
 )
 VALUES(
     '${titles[i]}',
-    ${Date.now() - (n-i)*day_ms},
-    ${Date.now() - (n-i)*day_ms + 3*day_ms},
+    ${Date.now() + (n-i)*day_ms + 17*day_ms},
+    ${Date.now() + (n-i)*day_ms + 34*day_ms},
     ${Math.floor(Math.random() * 10)},
     ${Math.floor(Math.random() * 30)+10},
-    ${Date.now() - (n-i)*day_ms - 10*day_ms},
-    ${Date.now() - (n-i)*day_ms - 15*day_ms},
+    ${Date.now() + (n-i)*day_ms + 10*day_ms},
+    ${Date.now() + (n-i)*day_ms + 15*day_ms},
     '${locations[i]}',
     '${phases[i]}',
     ${Math.random() * 100},
