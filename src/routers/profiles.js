@@ -39,11 +39,11 @@ router.get('/profile', function(req, res, next) {
     }
     profilesModel.show(fbID).then(profiles => {
         for (let p of profiles.propose) {
-            fn.prop_ts_2_datestring(p, "start_datetime");
-            fn.prop_ts_2_datestring(p, "deadline");
+            fn.tsWrapper(p, "start_datetime");
+            fn.tsWrapper(p, "deadline");
         }
         for (let a of profiles.attend) {
-            fn.prop_ts_2_datestring(a, "start_datetime");
+            fn.tsWrapper(a, "start_datetime");
         }
         res.json(profiles);
     }).catch(next);

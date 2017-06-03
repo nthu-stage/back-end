@@ -16,8 +16,8 @@ router.get('/workshops', function(req, res, next) {
 
     workshopsModel.list(searchText, stateFilter).then(workshops => {
         for (let w of workshops) {
-            fn.prop_ts_2_datestring(w, 'deadline');
-            fn.prop_ts_2_datestring(w, 'pre_deadline');
+            fn.tsWrapper(w, 'deadline');
+            fn.tsWrapper(w, 'pre_deadline');
         }
         res.json(workshops);
     }).catch(next);
@@ -37,10 +37,10 @@ router.get('/workshops/:w_id', function(req, res, next) {
     }
 
     workshopsModel.show(w_id, fbID) .then(workshop => {
-        fn.prop_ts_2_datestring(workshop, 'start_datetime');
-        fn.prop_ts_2_datestring(workshop, 'end_datetime');
-        fn.prop_ts_2_datestring(workshop, 'deadline');
-        fn.prop_ts_2_datestring(workshop, 'pre_deadline');
+        fn.tsWrapper(workshop, 'start_datetime');
+        fn.tsWrapper(workshop, 'end_datetime');
+        fn.tsWrapper(workshop, 'deadline');
+        fn.tsWrapper(workshop, 'pre_deadline');
         if (workshop.attended === null) workshop.attended = false;
         res.json(workshop);
     }).catch(next);
