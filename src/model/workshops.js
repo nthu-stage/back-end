@@ -12,7 +12,7 @@ const check_author_sql = `
 `;
 
 function list(searchText, stateFilter) {
-    const cur_time = Date.now()/1000;
+    const cur_time = Date.now();
 
     var where = [];
     if (searchText) {
@@ -228,7 +228,7 @@ function show(w_id, fb_id) {
             return 'judge_na';
         } else if (w.state === 'judge_ac') {
             return db.one(infoSQL, w_id).then(info => {
-                const time = Date.now()/1000;
+                const time = Date.now();
                 if ((+info.pre_deadline) < time) {
                     //next_state = 3;
                     db.none(state_updateSQL, [w_id, 'unreached']);
@@ -322,7 +322,7 @@ function attend(w_id, fb_id) {
     return db.one(stateSQL, w_id).then(w => {
         if (w.state === 'judge_ac') {
             return db.one(infoSQL, w_id).then(info => {
-                if ((+info.pre_deadline) < Date.now()/1000) {
+                if ((+info.pre_deadline) < Date.now()) {
                     db.none(state_updateSQL, [w_id, 'unreached']);
                     return {attended: "0"};
                 } else {
