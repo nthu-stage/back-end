@@ -397,6 +397,72 @@ function delete_(w_id, fb_id) {
     });
 }
 
+function update(
+    w_id,
+    fb_id,
+    image_url,
+    start_datetime,
+    end_datetime,
+    location,
+    content,
+    title,
+    min_number,
+    max_number,
+    deadline,
+    introduction,
+    price
+){
+    const obj = {
+        image_url,
+        start_datetime,
+        end_datetime,
+        location,
+        content,
+        title,
+        min_number,
+        max_number,
+        deadline,
+        introduction,
+        price
+    };
+    // TODO: RETURNING * maybe bug, return uneccesary fields
+    const sql = `
+        UPDATE workshops
+        SET
+            image_url      = $<image_url>,
+            start_datetime = $<start_datetime>,
+            end_datetime   = $<end_datetime>,
+            location       = $<location>,
+            content        = $<content>,
+            title          = $<title>,
+            min_number     = $<min_number>,
+            max_number     = $<max_number>,
+            deadline       = $<deadline>,
+            introduction   = $<introduction>,
+            price          = $<price>
+        WHERE id=$<w_id>
+        RETURNING *;
+    `;
+    return db.task(t => {
+        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+            if (p_id ===0 ) {
+                const err = new Error('Cannot found this fb user in database.');
+                err.status = 400;
+                throw err;
+            }
+            return t.one(check_author_sql, {p_id, w_id}).then(( {is_author} ) => {
+                if (is_author == "0") {
+                    const err = new Error('Cannot match user and workshop.');
+                    err.status = 400;
+                    throw err;
+                }
+                return t.one(sql, {w_id, image_url, start_datetime, end_datetime, location,
+                    content, title, min_number, max_number, deadline, introduction, price});
+            });
+        });
+    });
+}
+
 module.exports = {
     propose,
     show,
@@ -404,4 +470,5 @@ module.exports = {
     list,
     attendees,
     delete: delete_,
+    update,
 };

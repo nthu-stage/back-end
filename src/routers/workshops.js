@@ -126,11 +126,6 @@ router.post('/workshops/:w_id', function(req, res, next) {
         else  attendState.attended = true;
         res.json(attendState);
     }).catch(next);
-
-    // [TODO]: work with workshopsModel.attend().
-    // voteModel.create(id, mood).then(post => {
-    //     res.json(post);
-    // }).catch(next);
 });
 
 // delete
@@ -150,6 +145,78 @@ router.delete('/workshops/:w_id', function(req, res, next) {
 
     workshopsModel.delete(w_id, fb_id).then(() => {
         res.sendStatus(200);
+    }).catch(next);
+});
+
+// update
+router.put('/workshops/:w_id', function(req, res, next) {
+    // check fb_id
+    const fb_id = req.get('userID');
+    if (fb_id === undefined) {
+        const err = new Error('You need to login. (propose)');
+        err.status = 401;
+        throw err;
+    }
+    // check parameters
+    const {w_id} = req.params;
+    if (!w_id) {
+        const err = new Error('workshop ID required. (delete)');
+        err.status = 400;
+        throw err;
+    }
+    // check body
+    const {
+        image_url = "",
+        start_datetime,
+        end_datetime,
+        location,
+        content,
+        title,
+        min_number,
+        max_number,
+        deadline,
+        introduction,
+        price
+    } = req.body;
+
+    if(
+      !start_datetime ||
+      !end_datetime ||
+      !location ||
+      !content ||
+      !title ||
+      !min_number ||
+      !max_number ||
+      !deadline ||
+      !introduction ||
+      !price ) {
+        const err = new Error('Workshops Information are required');
+            err.status = 400;
+        throw err;
+    }
+    workshopsModel.update(
+        w_id,
+        fb_id,
+        image_url,
+        // new Date(start_datetime).getTime(),
+        // new Date(end_datetime).getTime(),
+        start_datetime,
+        end_datetime,
+        location,
+        content,
+        title,
+        min_number,
+        max_number,
+        // new Date(deadline).getTime(),
+        deadline,
+        introduction,
+        price
+    ).then(workshop => {
+        fn.tsWrapper(workshop, 'start_datetime');
+        fn.tsWrapper(workshop, 'end_datetime');
+        fn.tsWrapper(workshop, 'deadline');
+        fn.tsWrapper(workshop, 'pre_deadline');
+        res.json(workshop);
     }).catch(next);
 });
 
