@@ -55,9 +55,10 @@ function regOrLogin(name, email, fb_userid, picture_url) {
 function show(fb_id) {
     //[TODO]: calculate workshops phase.
     const profilesSQL = `
-        SELECT profiles.id, profiles.available_time
+        SELECT
+            id, available_time, email
         FROM profiles
-        WHERE profiles.fb_userid = $1;
+        WHERE fb_userid = $1;
     `;
 
     const proposeSQL = `
@@ -137,7 +138,7 @@ function show(fb_id) {
 
     return db.one(profilesSQL,fb_id)
     .then(profiles => {
-
+        const email = profiles.email;
         var propose = db.any(proposeSQL, profiles.id);
         var attend = db.any(attendSQL, profiles.id);
         var comeUpWith = db.any(comeUpWithSQL, profiles.id);
@@ -146,7 +147,7 @@ function show(fb_id) {
         return Promise.all([JSON.parse(profiles.available_time), propose, attend, comeUpWith, like])
         .then(([availableTime,propose,attend,comeUpWith,like]) => {
             return new Promise((resolve, reject) => {
-                resolve({availableTime, propose, attend, comeUpWith, like});
+                resolve({email, availableTime, propose, attend, comeUpWith, like});
             })
         })
     })
