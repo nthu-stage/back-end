@@ -4,12 +4,19 @@ if (!global.db) {
 }
 
 
-const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
-const check_author_sql = `
+const get_p_id_from_fb_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
+const check_workshop_author_sql = `
     SELECT COUNT(*) AS is_author
     FROM proposes
     WHERE profile_id=$<p_id> AND workshop_id=$<w_id>
 `;
+const update_unreached_sql = `
+    UPDATE workshops
+    SET state = 'unreached'
+    WHERE
+        state = 'judge_ac' AND pre_deadline < $<cur_time>
+`;
+
 
 function list(searchText, stateFilter) {
     const cur_time = Date.now();
@@ -20,13 +27,6 @@ function list(searchText, stateFilter) {
         where.push(`w.title ILIKE '%$<searchText:value>%'`);
     }
 
-    const update_unreached_sql = `
-        UPDATE workshops
-        SET state = 'unreached'
-        WHERE
-            state = 'judge_ac' AND
-            pre_deadline < $<cur_time>
-    `;
     const sql = `
         SELECT
             w.id as w_id,
@@ -154,7 +154,7 @@ function show(w_id, fb_id) {
     const stateSQL = `
         SELECT workshops.state
         FROM workshops
-        WHERE workshops.id = $1
+        WHERE workshops.id = $<w_id>
     `;
 
     const infoSQL =  `
@@ -162,19 +162,19 @@ function show(w_id, fb_id) {
             w.pre_deadline,
             w.min_number
         FROM workshops as w
-        WHERE w.id = $1
+        WHERE w.id = $<w_id>
     `;
 
     const attendees_numberSQL = `
         SELECT count(*) AS attendees_number
         FROM attends
-        WHERE workshop_id = $1;
+        WHERE workshop_id = $<w_id>;
     `;
 
     const state_updateSQL = `
         UPDATE workshops
-        SET state = $2
-        WHERE workshops.id = $1;
+        SET state = $<state>
+        WHERE workshops.id = $<w_id>;
     `;
 
     const workshopsSQL = `
@@ -192,14 +192,14 @@ function show(w_id, fb_id) {
             w.introduction,
             w.price,
             profiles.name as name,
-            bool_or(attends.profile_id = $2) as attended
+            bool_or(attends.profile_id = $<p_id>) as attended
         FROM workshops as w
         INNER JOIN proposes
-        on w.id = $1 AND proposes.workshop_id = $1
+        on w.id = $<w_id> AND proposes.workshop_id = $<w_id>
         INNER JOIN profiles
         on profiles.id = proposes.profile_id
         LEFT JOIN attends
-        on attends.workshop_id = $1
+        on attends.workshop_id = $<w_id>
         GROUP BY
             w.image_url,
             w.start_datetime,
@@ -217,28 +217,31 @@ function show(w_id, fb_id) {
     `;
 
 
-    var phase = db.one(stateSQL, w_id).then(w => {
+    var phase = db.one(stateSQL, {w_id}).then(w => {
         if (w.state === 'judging') {
             return 'judging';
         } else if (w.state === 'judge_na') {
             return 'judge_na';
         } else if (w.state === 'judge_ac') {
-            return db.one(infoSQL, w_id).then(info => {
+            return db.one(infoSQL, {w_id}).then(info => {
                 const time = Date.now();
-                if ((+info.pre_deadline) < time) {
+                info.pre_deadline = (+ info.pre_deadline);
+                info.min_number   = (+ info.pre_deadline);
+                if (info.pre_deadline < time) {
                     //next_state = 3;
                     return db
-                        .none(state_updateSQL, [w_id, 'unreached'])
+                        .none(state_updateSQL, {w_id, state: 'unreached'})
                         .then(() => 'unreached');
                 } else {
-                    return db.one(attendees_numberSQL, w_id).then(({attendees_number}) => {
+                    return db.one(attendees_numberSQL, {w_id}).then(({attendees_number}) => {
+                        attendees_number = (+ attendees_number);
                         if (attendees_number < info.min_number) {
                             //next_state = 2;
                             return 'investigating'; // 調查中
                         } else  {
                             //next_state = 4;
                             return db
-                                .none(state_updateSQL, [w_id, 'reached'])
+                                .none(state_updateSQL, {w_id, state: 'reached'})
                                 .then(() => 'reached');
                         }
                     });
@@ -259,12 +262,12 @@ function show(w_id, fb_id) {
     })
 
     var attendees_number = db
-        .one(attendees_numberSQL, w_id)
+        .one(attendees_numberSQL, {w_id})
         .then(({attendees_number}) => (+ attendees_number));
 
     var workshops = db.task(t => {
-        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
-            return t.one(workshopsSQL, [w_id, p_id]);
+        return t.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+            return t.one(workshopsSQL, {w_id, p_id});
         });
     });
 
@@ -285,35 +288,29 @@ function attend(w_id, fb_id) {
     const stateSQL = `
         SELECT workshops.state
         FROM workshops
-        WHERE workshops.id = $1
+        WHERE workshops.id = $<w_id>
     `;
 
     const infoSQL =  `
         SELECT w.pre_deadline
         FROM workshops as w
-        WHERE w.id = $1;
+        WHERE w.id = $<w_id>;
     `;
 
     const state_updateSQL = `
         UPDATE workshops
-        SET state = $2
-        WHERE workshops.id = $1;
-    `;
-
-    const profilesSQL = `
-        SELECT profiles.id
-        FROM profiles
-        WHERE profiles.fb_userid = $1;
+        SET state = $<state>
+        WHERE workshops.id = $<w_id>;
     `;
 
     const toggle_attendSQL = `
     DO
     $do$
     BEGIN
-    IF (SELECT COUNT(*) FROM attends WHERE profile_id=$1 AND workshop_id=$2) > 0 THEN
-    DELETE FROM attends WHERE profile_id=$1 AND workshop_id=$2;
+    IF (SELECT COUNT(*) FROM attends WHERE profile_id=$<p_id> AND workshop_id=$<w_id>) > 0 THEN
+    DELETE FROM attends WHERE profile_id=$<p_id> AND workshop_id=$<w_id>;
     ELSE
-    INSERT INTO attends VALUES ($1, $2);
+    INSERT INTO attends VALUES ($<p_id>, $<w_id>);
     END IF;
     END
     $do$;
@@ -322,23 +319,28 @@ function attend(w_id, fb_id) {
     const attend_checkSQL = `
         SELECT count(attends.profile_id) as attended
         FROM attends
-        WHERE attends.profile_id = $1 AND attends.workshop_id = $2;
+        WHERE attends.profile_id = $<p_id> AND attends.workshop_id = $<w_id>;
     `;
 
-    return db.one(stateSQL, w_id).then(w => {
+    return db.one(stateSQL, {w_id}).then(w => {
         // TODO: judge state
         // TODO: cannot attend more than max_number
-        if (w.state === 'judge_ac') {
-            return db.one(infoSQL, w_id).then(info => {
+        if (w.state === 'judge_ac' || w.state === 'reached') {
+            return db.one(infoSQL, {w_id}).then(info => {
                 if ((+info.pre_deadline) < Date.now()) {
-                    db.none(state_updateSQL, [w_id, 'unreached']).catch(err=>{
+                    db.none(state_updateSQL, {w_id, state: 'unreached'}).catch(err=>{
                         throw err;
                     });
                     return {attended: "0"};
                 } else {
-                    return db.one(profilesSQL, fb_id).then(profiles => {
-                        return db.none(toggle_attendSQL, [profiles.id, w_id]).then(() => {
-                            return db.one(attend_checkSQL, [profiles.id, w_id]);
+                    return db.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+                        if (p_id ===0 ) {
+                            const err = new Error('Cannot found this fb user in database.');
+                            err.status = 400;
+                            throw err;
+                        }
+                        return db.none(toggle_attendSQL, {p_id, w_id}).then(() => {
+                            return db.one(attend_checkSQL, {p_id, w_id});
                         })
                     });
                 }
@@ -365,13 +367,13 @@ function attendees(w_id, fb_id) {
     `;
 
     return db.task(t => {
-        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+        return t.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
             if (p_id ===0 ) {
                 const err = new Error('Cannot found this fb user in database.');
                 err.status = 400;
                 throw err;
             }
-            return t.one(check_author_sql, {p_id, w_id}).then(( {is_author} ) => {
+            return t.one(check_workshop_author_sql, {p_id, w_id}).then(( {is_author} ) => {
                 if (is_author == "0") {
                     const err = new Error('Cannot match user and workshop.');
                     err.status = 400;
@@ -389,13 +391,13 @@ function delete_(w_id, fb_id) {
         WHERE id=$<w_id>
     `;
     return db.task(t => {
-        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+        return t.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
             if (p_id ===0 ) {
                 const err = new Error('Cannot found this fb user in database.');
                 err.status = 400;
                 throw err;
             }
-            return t.one(check_author_sql, {p_id, w_id}).then(( {is_author} ) => {
+            return t.one(check_workshop_author_sql, {p_id, w_id}).then(( {is_author} ) => {
                 if (is_author == "0") {
                     const err = new Error('Cannot match user and workshop.');
                     err.status = 400;
@@ -435,7 +437,6 @@ function update(
         introduction,
         price
     };
-    // TODO: RETURNING * maybe bug, return uneccesary fields
     const sql = `
         UPDATE workshops
         SET
@@ -454,13 +455,13 @@ function update(
         RETURNING *;
     `;
     return db.task(t => {
-        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
+        return t.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
             if (p_id ===0 ) {
                 const err = new Error('Cannot found this fb user in database.');
                 err.status = 400;
                 throw err;
             }
-            return t.one(check_author_sql, {p_id, w_id}).then(( {is_author} ) => {
+            return t.one(check_workshop_author_sql, {p_id, w_id}).then(( {is_author} ) => {
                 if (is_author == "0") {
                     const err = new Error('Cannot match user and workshop.');
                     err.status = 400;
