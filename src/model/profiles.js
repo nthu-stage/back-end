@@ -53,7 +53,6 @@ function regOrLogin(name, email, fb_userid, picture_url) {
 
 
 function show(fb_id) {
-    //[TODO]: calculate workshops phase.
     const profilesSQL = `
         SELECT
             id, available_time, email
