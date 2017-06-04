@@ -63,7 +63,7 @@ router.put('/profile', (req, res, next) => {
         case 'email':
             const {email} = req.body;
             if (!email) {
-                const err = new Error('need available time in request body');
+                const err = new Error('need email in request body');
                 err.status = 401;
                 throw err;
             }
