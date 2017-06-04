@@ -4,7 +4,7 @@ if (!global.db) {
 }
 
 // common sql
-const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
+const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$(fb_id)`;
 
 function regOrLogin(name, email, fb_userid, picture_url) {
 

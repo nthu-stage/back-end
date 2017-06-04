@@ -3,23 +3,71 @@ if (!global.db) {
     db = pgp(process.env.DB_URL);
 }
 
+// any(fb_id) -> [{id: p_id}]=[{id: 0}]
+const get_p_id_from_fb_sql = `
+    SELECT id
+    FROM profiles
+    WHERE fb_userid=$(fb_id)`;
 
-const get_p_id_from_fb_sql = `SELECT id FROM profiles WHERE fb_userid=$(fb_id)`;
+// one(p_id, w_id) -> {is_author}, if is_author == "0"
 const check_workshop_author_sql = `
     SELECT COUNT(*) AS is_author
     FROM proposes
     WHERE profile_id=$(p_id) AND workshop_id=$(w_id)
 `;
+
+// none(now) -> void
 const update_unreached_sql = `
     UPDATE workshops
     SET state = 'unreached'
-    WHERE
-        state = 'judge_ac' AND pre_deadline < $(cur_time)
+    WHERE state = 'judge_ac' AND pre_deadline < $(now)
 `;
 
+// none(now) -> void
+const update_over_sql = `
+    UPDATE workshops
+    SET state='over'
+    WHERE state='reached' AND start_datetime < $(now)
+`;
+
+// none(w_id) -> void, only update workshop that attended
+const update_reached_sql = `
+    UPDATE workshops
+    SET state='reached'
+    WHERE state='judge_ac' AND $(attendees_number) >= min_number
+`;
+
+// one(w_id) -> {attendees_number}
+const get_attendees_number_sql = `
+    SELECT count(*) AS attendees_number
+    FROM attends
+    WHERE workshop_id = $(w_id);
+`;
+
+function attach_phase_on_workshop(workshop, now) {
+    // workshop should contain state, deadline, max_number,
+    // and attendees_number (need to attach beforehand)
+    // TODO: fully test the phase mapping
+    switch (workshop.state) {
+        case 'judge_ac':
+            workshop.phase='investigating';
+            break;
+        case 'reached':
+            if (workshop.deadline < now) {
+                workshop.phase='closed';
+            } else if (workshop.attendees_number == workshop.max_number) {
+                workshop.phase='full';
+            } else {
+                workshop.phase='reached';
+            }
+            break;
+        default:
+            workshop.phase = workshop.state;
+    }
+}
 
 function list(searchText, stateFilter) {
-    const cur_time = Date.now();
+    const now = Date.now();
 
     var where = [];
     if (searchText) {
@@ -27,7 +75,7 @@ function list(searchText, stateFilter) {
         where.push(`w.title ILIKE '%$<searchText:value>%'`);
     }
 
-    const sql = `
+    const workshops_sql = `
         SELECT
             w.id as w_id,
             w.image_url,
@@ -49,40 +97,42 @@ function list(searchText, stateFilter) {
         GROUP BY w.id
         ORDER BY w.deadline ASC
     `;
-    return db.task(t => {
-        return t.none(update_unreached_sql , {cur_time}).then(() => {
-            return t.any(sql, {searchText, stateFilter}).then(ws => {
-                for (let w of ws) {
-                    switch (w.state) {
-                        case 'judging':   w.phase='judging';       break;
-                        case 'judge_na':  w.phase='judge_na';      break;
-                        case 'judge_ac':  w.phase='investigating'; break;
-                        case 'unreached': w.phase='unreached';     break;
-                        default:/*reached*/
-                            w.phase=(w.end_datetime<cur_time) ? 'over' : 'reached';
-                    }
-                    delete w.start_datetime;
-                    delete w.end_datetime;
-                    delete w.state
+    function state_filter_predicate(workshop) {
+        switch (stateFilter) {
+            case "0":
+                return false;
+            case "1":
+                return w.state=='reached';
+            case "2":
+                return w.state=='judge_ac';
+                // debug only
+            case "all":
+                return true;
+            default:
+                return (w.state=='reached') || (w.state=='judge_ac');
+        }
+    }
+    function source(index, data, delay) {
+        const now=Date.now();
+        switch (index) {
+            case 0:
+                // transition state about time changing
+                var unreached = this.none(update_unreached_sql, {now});
+                var over = this.none(update_over_sql, {now});
+                return this.batch([unreached, over]);
+            case 1:
+                return this.any(workshops_sql, {searchText, stateFilter});
+            case 2:
+                var workshops = data;
+                for (let w of workshops) {
+                    attach_phase_on_workshop(w, now)
                 }
-                return ws.filter(w => {
-                    switch (stateFilter) {
-                        case "0":
-                            return false;
-                        case "1":
-                            return w.phase=='reached';
-                        case "2":
-                            return w.phase=='investigating';
-                        // debug only
-                        case "all":
-                            return true;
-                        default:
-                            return (w.phase=='reached') || (w.phase=='investigating');
-                    }
-                });
-            });
-        });
-    });
+                return workshops.filter(state_filter_predicate);
+        }
+    }
+    return db
+        .tx(t => t.sequence(source, {track: true}))
+        .then(data => data.slice(-1)[0]);
 }
 
 function propose(
@@ -147,8 +197,6 @@ function propose(
     });
 }
 
-
-
 // Show
 function show(w_id, fb_id) {
     const stateSQL = `
@@ -163,18 +211,6 @@ function show(w_id, fb_id) {
             w.min_number
         FROM workshops as w
         WHERE w.id = $(w_id)
-    `;
-
-    const attendees_numberSQL = `
-        SELECT count(*) AS attendees_number
-        FROM attends
-        WHERE workshop_id = $(w_id);
-    `;
-
-    const state_updateSQL = `
-        UPDATE workshops
-        SET state = $(state)
-        WHERE workshops.id = $(w_id);
     `;
 
     const workshopsSQL = `
@@ -233,7 +269,7 @@ function show(w_id, fb_id) {
                         .none(state_updateSQL, {w_id, state: 'unreached'})
                         .then(() => 'unreached');
                 } else {
-                    return db.one(attendees_numberSQL, {w_id}).then(({attendees_number}) => {
+                    return db.one(get_attendees_number_sql, {w_id}).then(({attendees_number}) => {
                         attendees_number = (+ attendees_number);
                         if (attendees_number < info.min_number) {
                             //next_state = 2;
@@ -262,7 +298,7 @@ function show(w_id, fb_id) {
     })
 
     var attendees_number = db
-        .one(attendees_numberSQL, {w_id})
+        .one(get_attendees_number_sql, {w_id})
         .then(({attendees_number}) => (+ attendees_number));
 
     var workshops = db.task(t => {
@@ -281,7 +317,6 @@ function show(w_id, fb_id) {
             });
         });
 }
-
 
 // Attend
 function attend(w_id, fb_id) {
