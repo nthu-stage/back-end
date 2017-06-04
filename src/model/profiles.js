@@ -17,12 +17,12 @@ function regOrLogin(name, email, fb_userid, picture_url) {
     const createProfilesSQL = `
         INSERT INTO profiles ($<this:name>)
         VALUES (
-            $<name>,
-            $<email>,
-            $<fb_userid>,
-            $<picture_url>,
-            $<authority>,
-            $<available_time>
+            $(name),
+            $(email),
+            $(fb_userid),
+            $(picture_url),
+            $(authority),
+            $(available_time)
         )
         RETURNING id as p_id;
     `;
@@ -30,11 +30,11 @@ function regOrLogin(name, email, fb_userid, picture_url) {
     const updateProfile = `
         UPDATE profiles
         SET
-            name = $<name>,
-            email = $<email>,
-            picture_url = $<picture_url>,
+            name = $(name),
+            email = $(email),
+            picture_url = $(picture_url),
             last_login_datetime = (extract(epoch from now()))
-        WHERE profiles.fb_userid = $<fb_userid>
+        WHERE profiles.fb_userid = $(fb_userid)
         RETURNING id as p_id;
     `;
 
@@ -155,8 +155,8 @@ function show(fb_id) {
 function updateAvailableTime(fb_id, available_time) {
     const sql = `
         UPDATE profiles
-        SET available_time=$<avai_time>
-        WHERE id = $<p_id>
+        SET available_time=$(avai_time)
+        WHERE id = $(p_id)
         RETURNING available_time
     `;
     return db.task(t => {
@@ -174,8 +174,8 @@ function updateAvailableTime(fb_id, available_time) {
 function updateEmail(fb_id, email) {
     const sql = `
         UPDATE profiles
-        SET email=$<email>
-        WHERE id=$<p_id>
+        SET email=$(email)
+        WHERE id=$(p_id)
     `;
     return db.task(t => {
         return t.any(fb_2_pID_sql, {fb_id})

@@ -4,17 +4,17 @@ if (!global.db) {
 }
 
 
-const get_p_id_from_fb_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
+const get_p_id_from_fb_sql = `SELECT id FROM profiles WHERE fb_userid=$(fb_id)`;
 const check_workshop_author_sql = `
     SELECT COUNT(*) AS is_author
     FROM proposes
-    WHERE profile_id=$<p_id> AND workshop_id=$<w_id>
+    WHERE profile_id=$(p_id) AND workshop_id=$(w_id)
 `;
 const update_unreached_sql = `
     UPDATE workshops
     SET state = 'unreached'
     WHERE
-        state = 'judge_ac' AND pre_deadline < $<cur_time>
+        state = 'judge_ac' AND pre_deadline < $(cur_time)
 `;
 
 
@@ -103,18 +103,18 @@ function propose(
     const workshopsSQL = `
         INSERT INTO workshops ($<this:name>)
         VALUES (
-            $<image_url>,
-            $<start_datetime>,
-            $<end_datetime>,
-            $<location>,
-            $<content>,
-            $<title>,
-            $<min_number>,
-            $<max_number>,
-            $<deadline>,
-            $<introduction>,
-            $<price>,
-            $<state>
+            $(image_url),
+            $(start_datetime),
+            $(end_datetime),
+            $(location),
+            $(content),
+            $(title),
+            $(min_number),
+            $(max_number),
+            $(deadline),
+            $(introduction),
+            $(price),
+            $(state)
         )
         RETURNING workshops.id as w_id;
     `;
@@ -154,7 +154,7 @@ function show(w_id, fb_id) {
     const stateSQL = `
         SELECT workshops.state
         FROM workshops
-        WHERE workshops.id = $<w_id>
+        WHERE workshops.id = $(w_id)
     `;
 
     const infoSQL =  `
@@ -162,19 +162,19 @@ function show(w_id, fb_id) {
             w.pre_deadline,
             w.min_number
         FROM workshops as w
-        WHERE w.id = $<w_id>
+        WHERE w.id = $(w_id)
     `;
 
     const attendees_numberSQL = `
         SELECT count(*) AS attendees_number
         FROM attends
-        WHERE workshop_id = $<w_id>;
+        WHERE workshop_id = $(w_id);
     `;
 
     const state_updateSQL = `
         UPDATE workshops
-        SET state = $<state>
-        WHERE workshops.id = $<w_id>;
+        SET state = $(state)
+        WHERE workshops.id = $(w_id);
     `;
 
     const workshopsSQL = `
@@ -192,14 +192,14 @@ function show(w_id, fb_id) {
             w.introduction,
             w.price,
             profiles.name as name,
-            bool_or(attends.profile_id = $<p_id>) as attended
+            bool_or(attends.profile_id = $(p_id)) as attended
         FROM workshops as w
         INNER JOIN proposes
-        on w.id = $<w_id> AND proposes.workshop_id = $<w_id>
+        on w.id = $(w_id) AND proposes.workshop_id = $(w_id)
         INNER JOIN profiles
         on profiles.id = proposes.profile_id
         LEFT JOIN attends
-        on attends.workshop_id = $<w_id>
+        on attends.workshop_id = $(w_id)
         GROUP BY
             w.image_url,
             w.start_datetime,
@@ -288,29 +288,29 @@ function attend(w_id, fb_id) {
     const stateSQL = `
         SELECT workshops.state
         FROM workshops
-        WHERE workshops.id = $<w_id>
+        WHERE workshops.id = $(w_id)
     `;
 
     const infoSQL =  `
         SELECT w.pre_deadline
         FROM workshops as w
-        WHERE w.id = $<w_id>;
+        WHERE w.id = $(w_id);
     `;
 
     const state_updateSQL = `
         UPDATE workshops
-        SET state = $<state>
-        WHERE workshops.id = $<w_id>;
+        SET state = $(state)
+        WHERE workshops.id = $(w_id);
     `;
 
     const toggle_attendSQL = `
     DO
     $do$
     BEGIN
-    IF (SELECT COUNT(*) FROM attends WHERE profile_id=$<p_id> AND workshop_id=$<w_id>) > 0 THEN
-    DELETE FROM attends WHERE profile_id=$<p_id> AND workshop_id=$<w_id>;
+    IF (SELECT COUNT(*) FROM attends WHERE profile_id=$(p_id) AND workshop_id=$(w_id)) > 0 THEN
+    DELETE FROM attends WHERE profile_id=$(p_id) AND workshop_id=$(w_id);
     ELSE
-    INSERT INTO attends VALUES ($<p_id>, $<w_id>);
+    INSERT INTO attends VALUES ($(p_id), $(w_id));
     END IF;
     END
     $do$;
@@ -319,7 +319,7 @@ function attend(w_id, fb_id) {
     const attend_checkSQL = `
         SELECT count(attends.profile_id) as attended
         FROM attends
-        WHERE attends.profile_id = $<p_id> AND attends.workshop_id = $<w_id>;
+        WHERE attends.profile_id = $(p_id) AND attends.workshop_id = $(w_id);
     `;
 
     return db.one(stateSQL, {w_id}).then(w => {
@@ -354,7 +354,7 @@ function attend(w_id, fb_id) {
 // attendees (dashboard)
 function attendees(w_id, fb_id) {
     const attendees_id_sql = `
-    SELECT profile_id FROM attends WHERE workshop_id=$<w_id>
+    SELECT profile_id FROM attends WHERE workshop_id=$(w_id)
     `;
 
     const sql = `
@@ -388,7 +388,7 @@ function attendees(w_id, fb_id) {
 function delete_(w_id, fb_id) {
     const sql = `
         DELETE FROM workshops
-        WHERE id=$<w_id>
+        WHERE id=$(w_id)
     `;
     return db.task(t => {
         return t.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
@@ -440,18 +440,18 @@ function update(
     const sql = `
         UPDATE workshops
         SET
-            image_url      = $<image_url>,
-            start_datetime = $<start_datetime>,
-            end_datetime   = $<end_datetime>,
-            location       = $<location>,
-            content        = $<content>,
-            title          = $<title>,
-            min_number     = $<min_number>,
-            max_number     = $<max_number>,
-            deadline       = $<deadline>,
-            introduction   = $<introduction>,
-            price          = $<price>
-        WHERE id=$<w_id>
+            image_url      = $(image_url),
+            start_datetime = $(start_datetime),
+            end_datetime   = $(end_datetime),
+            location       = $(location),
+            content        = $(content),
+            title          = $(title),
+            min_number     = $(min_number),
+            max_number     = $(max_number),
+            deadline       = $(deadline),
+            introduction   = $(introduction),
+            price          = $(price)
+        WHERE id=$(w_id)
         RETURNING *;
     `;
     return db.task(t => {

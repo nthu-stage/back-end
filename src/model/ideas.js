@@ -5,10 +5,10 @@ if (!global.db) {
 
 // ===[common sql]===
 // {fb_id} => {p_id}
-const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
+const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$(fb_id)`;
 // {p_id, i_id} => {is_author}, then check whether is_author == "1"
 const check_author_sql = `
-SELECT COUNT(*) AS is_author FROM come_up_withs WHERE profile_id=$<p_id> AND idea_id=$<i_id>
+SELECT COUNT(*) AS is_author FROM come_up_withs WHERE profile_id=$(p_id) AND idea_id=$(i_id)
 `;
 
 function list(searchText, order, fb_id=null) {
@@ -156,11 +156,11 @@ function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
     const ideasSQL = `
         INSERT INTO ideas ($<this:name>)
         VALUES (
-            $<idea_type>,
-            $<skill>,
-            $<goal>,
-            $<web_url>,
-            $<image_url>
+            $(idea_type),
+            $(skill),
+            $(goal),
+            $(web_url),
+            $(image_url)
         )
         RETURNING id as i_id;
     `;
@@ -187,10 +187,10 @@ function like(i_id, fb_id) {
     DO
     $do$
     BEGIN
-    IF (SELECT COUNT(*) FROM likes WHERE profile_id=$<p_id> AND idea_id=$<i_id>) > 0 THEN
-    DELETE FROM likes WHERE profile_id=$<p_id> AND idea_id=$<i_id>;
+    IF (SELECT COUNT(*) FROM likes WHERE profile_id=$(p_id) AND idea_id=$(i_id)) > 0 THEN
+    DELETE FROM likes WHERE profile_id=$(p_id) AND idea_id=$(i_id);
     ELSE
-    INSERT INTO likes VALUES ($<p_id>, $<i_id>);
+    INSERT INTO likes VALUES ($(p_id), $(i_id));
     END IF;
     END
     $do$;
@@ -198,12 +198,12 @@ function like(i_id, fb_id) {
     const liked_sql = `
     SELECT COUNT(*) AS liked
     FROM likes
-    WHERE profile_id = $<p_id> AND idea_id = $<i_id>
+    WHERE profile_id = $(p_id) AND idea_id = $(i_id)
     `;
     const like_number_sql = `
     SELECT COUNT(*) AS like_number
     FROM likes
-    WHERE idea_id = $<i_id>
+    WHERE idea_id = $(i_id)
     `;
 
     return db.task(t => {
@@ -229,7 +229,7 @@ function like(i_id, fb_id) {
 function remove(i_id, fb_id) {
     const delete_idea_sql = `
         DELETE FROM ideas
-        WHERE id=$<i_id>
+        WHERE id=$(i_id)
     `;
 
     return db.task(t => {
@@ -261,11 +261,11 @@ function update(i_id, fb_id, skill, goal, web_url, image_url) {
     const update_idea_sql = `
     UPDATE ideas
     SET
-        skill     = $<skill>,
-        goal      = $<goal>,
-        web_url   = $<web_url>,
-        image_url = $<image_url>
-    WHERE id=$<i_id>
+        skill     = $(skill),
+        goal      = $(goal),
+        web_url   = $(web_url),
+        image_url = $(image_url)
+    WHERE id=$(i_id)
     `;
 
     return db.task(t => {
