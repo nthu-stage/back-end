@@ -40,7 +40,8 @@ CREATE TYPE state AS ENUM (
     'judge_na',
     'judge_ac',
     'reached',
-    'unreached'
+    'unreached',
+    'over'
 );
 CREATE TABLE profiles (
     id                  serial PRIMARY KEY NOT NULL,
@@ -180,10 +181,10 @@ VALUES(
 }
 
 function genDummyWorkshops() {
-    const n = 5;
-    const titles=['React', 'Git', 'Archi', 'Linux', 'Stage'];
-    const locations=['London','Tokyo','Rome','Taipei','Hsinchu'];
-    const phases=[ 'judging', 'judge_na', 'judge_ac', 'reached', 'unreached' ];
+    const n = 6;
+    const titles=['React', 'Git', 'Archi', 'Linux', 'Stage', 'Antergos'];
+    const locations=['London','Tokyo','Rome','Taipei','Hsinchu','Paris'];
+    const phases=[ 'judging', 'judge_na', 'judge_ac', 'reached', 'unreached', 'over'];
     var sql = new String();
     for (let i=0; i<n; i++) {
        sql += `
