@@ -166,7 +166,7 @@ function show(w_id, fb_id) {
     `;
 
     const attendees_numberSQL = `
-        SELECT count(*)
+        SELECT count(*) AS attendees_number
         FROM attends
         WHERE workshop_id = $1;
     `;
@@ -217,7 +217,7 @@ function show(w_id, fb_id) {
     `;
 
 
-    var phase = db.one(stateSQL, w_id).then (w => {
+    var phase = db.one(stateSQL, w_id).then(w => {
         if (w.state === 'judging') {
             return 'judging';
         } else if (w.state === 'judge_na') {
@@ -227,17 +227,19 @@ function show(w_id, fb_id) {
                 const time = Date.now();
                 if ((+info.pre_deadline) < time) {
                     //next_state = 3;
-                    db.none(state_updateSQL, [w_id, 'unreached']);
-                    return 'unreached'; // 未達標
+                    return db
+                        .none(state_updateSQL, [w_id, 'unreached'])
+                        .then(() => 'unreached');
                 } else {
-                    return db.one(attendees_numberSQL, w_id).then(({count: attendees_number}) => {
+                    return db.one(attendees_numberSQL, w_id).then(({attendees_number}) => {
                         if (attendees_number < info.min_number) {
                             //next_state = 2;
                             return 'investigating'; // 調查中
                         } else  {
                             //next_state = 4;
-                            db.none(state_updateSQL, [w_id, 'reached']);
-                            return 'reached'; // 已達標
+                            return db
+                                .none(state_updateSQL, [w_id, 'reached'])
+                                .then(() => 'reached');
                         }
                     });
                 }
@@ -256,19 +258,25 @@ function show(w_id, fb_id) {
         }
     })
 
+    var attendees_number = db
+        .one(attendees_numberSQL, w_id)
+        .then(({attendees_number}) => (+ attendees_number));
+
     var workshops = db.task(t => {
         return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
             return t.one(workshopsSQL, [w_id, p_id]);
         });
     });
 
-
-    return Promise.all([workshops, phase]).then(([workshops, phase]) => {
-        workshops.phase = phase;
-        return new Promise((resolve, reject) => {
-            resolve(workshops);
-        })
-    })
+    return Promise
+        .all([workshops, phase, attendees_number])
+        .then(([workshops, phase, attendees_number]) => {
+            workshops.phase = phase;
+            workshops.attendees_number = attendees_number;
+            return new Promise((resolve, reject) => {
+                resolve(workshops);
+            });
+        });
 }
 
 
