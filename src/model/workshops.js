@@ -318,6 +318,8 @@ function attend(w_id, fb_id) {
     `;
 
     return db.one(stateSQL, w_id).then(w => {
+        // TODO: judge state
+        // TODO: cannot attend more than max_number
         if (w.state === 'judge_ac') {
             return db.one(infoSQL, w_id).then(info => {
                 if ((+info.pre_deadline) < Date.now()) {

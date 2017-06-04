@@ -60,6 +60,18 @@ router.put('/profile', (req, res, next) => {
         throw err;
     }
     switch (key) {
+        case 'email':
+            const {email} = req.body;
+            if (!email) {
+                const err = new Error('need available time in request body');
+                err.status = 401;
+                throw err;
+            }
+            profilesModel
+                .updateEmail(fb_id, email)
+                .then(() => { res.json({email}); })
+                .catch(next);
+            break;
         case 'availableTime':
             const availableTime = req.body;
             if (!availableTime) {
@@ -67,9 +79,10 @@ router.put('/profile', (req, res, next) => {
                 err.status = 401;
                 throw err;
             }
-            profilesModel.updateAvailableTime(fbID, availableTime).then(new_avai_time => {
-                res.json(JSON.parse(new_avai_time.available_time));
-            }).catch(next);
+            profilesModel
+                .updateAvailableTime(fb_id, availableTime)
+                .then(new_ => { res.json(JSON.parse(new_.available_time)); })
+                .catch(next);
             break;
         default:
             const err = new Error('Unknown key to update');
