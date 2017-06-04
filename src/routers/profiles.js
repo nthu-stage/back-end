@@ -16,9 +16,9 @@ router.post('/profile', function(req, res, next) {
         throw err;
     }
 
-    const {name, email, picture_url = ""} = req.body;
+    const {name, email="", picture_url=""} = req.body;
 
-    if(!name || !email) {
+    if(!name) {
         const err = new Error('Profiles Information are required');
         err.status = 400;
         throw err;
