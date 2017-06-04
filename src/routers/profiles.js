@@ -9,8 +9,8 @@ router.use(bodyParser.json());
 
 //  regOrLogin
 router.post('/profile', function(req, res, next) {
-    const fbID = req.get('userID');
-    if (fbID === undefined) {
+    const fb_id = req.get('userID');
+    if (fb_id === undefined) {
         const err = new Error('Not a corret ID for Login or Register');
         err.status = 401;
         throw err;
@@ -20,24 +20,25 @@ router.post('/profile', function(req, res, next) {
 
     if(!name || !email) {
         const err = new Error('Profiles Information are required');
-            err.status = 400;
+        err.status = 400;
         throw err;
     }
 
-    profilesModel.regOrLogin(name, email, fbID, picture_url).then(id => {
+    profilesModel
+        .regOrLogin(name, email, fb_id, picture_url).then(id => {
         res.json(id);
     }).catch(next);
 });
 
 // show
 router.get('/profile', function(req, res, next) {
-    const fbID = req.get('userID');
-    if (fbID === undefined) {
+    const fb_id = req.get('userID');
+    if (fb_id === undefined) {
         const err = new Error('Not a corret ID for watching profiles');
         err.status = 401;
         throw err;
     }
-    profilesModel.show(fbID).then(profiles => {
+    profilesModel.show(fb_id).then(profiles => {
         for (let p of profiles.propose) {
             fn.tsWrapper(p, "start_datetime");
             fn.tsWrapper(p, "deadline");
@@ -51,14 +52,26 @@ router.get('/profile', function(req, res, next) {
 
 // update
 router.put('/profile', (req, res, next) => {
-    const fbID = req.get('userID');
+    const fb_id = req.get('userID');
     const {key} = req.query;
-    if (fbID === undefined) {
+    if (fb_id === undefined) {
         const err = new Error('Not a corret ID for updating the profile.');
         err.status = 401;
         throw err;
     }
     switch (key) {
+        case 'email':
+            const {email} = req.body;
+            if (!email) {
+                const err = new Error('need available time in request body');
+                err.status = 401;
+                throw err;
+            }
+            profilesModel
+                .updateEmail(fb_id, email)
+                .then(() => { res.json({email}); })
+                .catch(next);
+            break;
         case 'availableTime':
             const availableTime = req.body;
             if (!availableTime) {
@@ -66,9 +79,10 @@ router.put('/profile', (req, res, next) => {
                 err.status = 401;
                 throw err;
             }
-            profilesModel.updateAvailableTime(fbID, availableTime).then(new_avai_time => {
-                res.json(JSON.parse(new_avai_time.available_time));
-            }).catch(next);
+            profilesModel
+                .updateAvailableTime(fb_id, availableTime)
+                .then(new_ => { res.json(JSON.parse(new_.available_time)); })
+                .catch(next);
             break;
         default:
             const err = new Error('Unknown key to update');
@@ -76,8 +90,5 @@ router.put('/profile', (req, res, next) => {
             throw err;
     }
 })
-
-
-
 
 module.exports = router;

@@ -3,6 +3,9 @@ if (!global.db) {
     db = pgp(process.env.DB_URL);
 }
 
+// common sql
+const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
+
 function regOrLogin(name, email, fb_userid, picture_url) {
 
     const checkSQL = `
@@ -52,9 +55,10 @@ function regOrLogin(name, email, fb_userid, picture_url) {
 function show(fb_id) {
     //[TODO]: calculate workshops phase.
     const profilesSQL = `
-        SELECT profiles.id, profiles.available_time
+        SELECT
+            id, available_time, email
         FROM profiles
-        WHERE profiles.fb_userid = $1;
+        WHERE fb_userid = $1;
     `;
 
     const proposeSQL = `
@@ -134,7 +138,7 @@ function show(fb_id) {
 
     return db.one(profilesSQL,fb_id)
     .then(profiles => {
-
+        const email = profiles.email;
         var propose = db.any(proposeSQL, profiles.id);
         var attend = db.any(attendSQL, profiles.id);
         var comeUpWith = db.any(comeUpWithSQL, profiles.id);
@@ -143,15 +147,13 @@ function show(fb_id) {
         return Promise.all([JSON.parse(profiles.available_time), propose, attend, comeUpWith, like])
         .then(([availableTime,propose,attend,comeUpWith,like]) => {
             return new Promise((resolve, reject) => {
-                resolve({availableTime, propose, attend, comeUpWith, like});
+                resolve({email, availableTime, propose, attend, comeUpWith, like});
             })
         })
     })
 }
 
 function updateAvailableTime(fb_id, available_time) {
-    // {fb_id} => {p_id}
-    const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$<fb_id>`;
     const sql = `
         UPDATE profiles
         SET available_time=$<avai_time>
@@ -170,9 +172,28 @@ function updateAvailableTime(fb_id, available_time) {
     });
 }
 
+function updateEmail(fb_id, email) {
+    const sql = `
+        UPDATE profiles
+        SET email=$<email>
+        WHERE id=$<p_id>
+    `;
+    return db.task(t => {
+        return t.any(fb_2_pID_sql, {fb_id})
+            .then( ([{id: p_id}] = [{id: 0}]) => {
+                if (p_id===0) {
+                    const err=new Error('Cannot found this fb user in database.');
+                    err.status=400;
+                    throw err;
+                }
+                return t.none(sql, {p_id, email});
+            });
+    })
+}
 
 module.exports = {
     regOrLogin,
     show,
     updateAvailableTime,
+    updateEmail,
 };

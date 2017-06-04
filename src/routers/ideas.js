@@ -8,8 +8,8 @@ router.use(bodyParser.json());
 
 // ComeUpWith
 router.post('/ideas', function(req, res, next) {
-    const fbID = req.get('userID');
-    if (fbID === undefined) {
+    const fb_id = req.get('userID');
+    if (fb_id === undefined) {
         const err = new Error('proposing a workshop need to login');
         err.status = 401;
         throw err;
@@ -23,7 +23,7 @@ router.post('/ideas', function(req, res, next) {
         throw err;
     }
 
-    ideasModel.comeUpWith(fbID, idea_type, skill, goal, web_url, image_url)
+    ideasModel.comeUpWith(fb_id, idea_type, skill, goal, web_url, image_url)
     .then(id => {
         res.json(id);
     }).catch(next);
@@ -32,9 +32,9 @@ router.post('/ideas', function(req, res, next) {
 
 //show
 router.get('/ideas/:i_id', function(req, res, next) {
-    var fbID = req.get('userID');
-    if (fbID === undefined) {
-        fbID = null;
+    var fb_id = req.get('userID');
+    if (fb_id === undefined) {
+        fb_id = null;
     }
     const {i_id} = req.params;
     if (!i_id) {
@@ -43,7 +43,7 @@ router.get('/ideas/:i_id', function(req, res, next) {
         throw err;
     }
 
-    ideasModel.show(i_id, fbID).then(ideas => {
+    ideasModel.show(i_id, fb_id).then(ideas => {
 		    ideas.like_number = (+ ideas.like_number);
         if(ideas.liked === null) ideas.liked = false;
         res.json(ideas);
@@ -54,12 +54,12 @@ router.get('/ideas/:i_id', function(req, res, next) {
 router.get('/ideas', function(req, res, next) {
 	const {searchText, order} = req.query;
 	// console.log(JSON.stringify(req.query));
-	var fbID = req.get('userID');
-	if (fbID === undefined) {
-		fbID = null;
+	var fb_id = req.get('userID');
+	if (fb_id === undefined) {
+		fb_id = null;
 	}
 
-	ideasModel.list(searchText, order, fbID).then((ideas=[]) => {
+	ideasModel.list(searchText, order, fb_id).then((ideas=[]) => {
 		for (let idea of ideas) {
 			idea.liked = (idea.liked=="1");
 			idea.like_number = (+ idea.like_number);
