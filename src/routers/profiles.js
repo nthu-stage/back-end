@@ -9,8 +9,8 @@ router.use(bodyParser.json());
 
 //  regOrLogin
 router.post('/profile', function(req, res, next) {
-    const fbID = req.get('userID');
-    if (fbID === undefined) {
+    const fb_id = req.get('userID');
+    if (fb_id === undefined) {
         const err = new Error('Not a corret ID for Login or Register');
         err.status = 401;
         throw err;
@@ -20,24 +20,25 @@ router.post('/profile', function(req, res, next) {
 
     if(!name || !email) {
         const err = new Error('Profiles Information are required');
-            err.status = 400;
+        err.status = 400;
         throw err;
     }
 
-    profilesModel.regOrLogin(name, email, fbID, picture_url).then(id => {
+    profilesModel
+        .regOrLogin(name, email, fb_id, picture_url).then(id => {
         res.json(id);
     }).catch(next);
 });
 
 // show
 router.get('/profile', function(req, res, next) {
-    const fbID = req.get('userID');
-    if (fbID === undefined) {
+    const fb_id = req.get('userID');
+    if (fb_id === undefined) {
         const err = new Error('Not a corret ID for watching profiles');
         err.status = 401;
         throw err;
     }
-    profilesModel.show(fbID).then(profiles => {
+    profilesModel.show(fb_id).then(profiles => {
         for (let p of profiles.propose) {
             fn.tsWrapper(p, "start_datetime");
             fn.tsWrapper(p, "deadline");
@@ -51,9 +52,9 @@ router.get('/profile', function(req, res, next) {
 
 // update
 router.put('/profile', (req, res, next) => {
-    const fbID = req.get('userID');
+    const fb_id = req.get('userID');
     const {key} = req.query;
-    if (fbID === undefined) {
+    if (fb_id === undefined) {
         const err = new Error('Not a corret ID for updating the profile.');
         err.status = 401;
         throw err;
@@ -76,8 +77,5 @@ router.put('/profile', (req, res, next) => {
             throw err;
     }
 })
-
-
-
 
 module.exports = router;
