@@ -110,14 +110,16 @@ function list(searchText, stateFilter) {
             case 2:
                 var workshops = data;
                 for (let w of workshops) {
-                    attach_phase_on_workshop(w, now)
+                    attach_phase_on_workshop(w, now);
                 }
                 return workshops.filter(state_filter_predicate);
         }
     }
+
     return db
         .tx(t => t.sequence(source, {track: true}))
-        .then(data => data.slice(-1)[0]);
+        .then(data => data.slice(-1)[0])
+        .catch(err => { throw err.error });
 }
 
 function propose(
@@ -182,22 +184,18 @@ function propose(
     });
 }
 
-// Show
 function show(w_id, fb_id) {
-    const stateSQL = `
-        SELECT workshops.state
-        FROM workshops
-        WHERE workshops.id = $(w_id)
+
+    // one(w_id) -> {workshop_id, name}
+    const get_proposer_sql = `
+        SELECT workshop_id, name
+        FROM profiles
+        INNER JOIN proposes
+        ON profiles.id=proposes.profile_id
+        WHERE workshop_id=$(w_id)
     `;
 
-    const infoSQL =  `
-        SELECT
-            w.pre_deadline,
-            w.min_number
-        FROM workshops as w
-        WHERE w.id = $(w_id)
-    `;
-
+    // one(w_id, p_id) ->
     // all field of workshop except
     //      id, created_at, updated_at, state(but need for gen phase)
     // and addition
@@ -205,110 +203,61 @@ function show(w_id, fb_id) {
     //      attendees_number,
     //      attended,
     //      phase
-
-    const workshopsSQL = `
+    const get_workshop_sql = `
         SELECT
-            w.image_url,
-            w.title,
-            w.location,
-            w.introduction,
-            w.content,
-            w.min_number,
-            w.max_number,
-            w.price,
-            w.start_datetime,
-            w.end_datetime,
-            w.deadline,
-            w.pre_deadline,
-            profiles.name as name,
-            bool_or(attends.profile_id = $(p_id)) as attended
-        FROM workshops as w
-        INNER JOIN proposes
-        on w.id = $(w_id) AND proposes.workshop_id = $(w_id)
-        INNER JOIN profiles
-        on profiles.id = proposes.profile_id
+            image_url,
+            title,
+            location,
+            introduction,
+            content,
+            min_number,
+            max_number,
+            price,
+            state,
+            start_datetime,
+            end_datetime,
+            deadline,
+            pre_deadline,
+            proposer.name AS name,
+            COUNT(attends.profile_id) AS attendees_number,
+            bool_or(attends.profile_id=$(p_id)) AS attended
+        FROM workshops
+        INNER JOIN (
+            ${get_proposer_sql}
+        ) AS proposer
+        ON proposer.workshop_id=workshops.id
         LEFT JOIN attends
-        on attends.workshop_id = $(w_id)
+        on attends.workshop_id=workshops.id
+        WHERE workshops.id=$(w_id)
         GROUP BY
-            w.image_url,
-            w.start_datetime,
-            w.end_datetime,
-            w.location,
-            w.content,
-            w.title,
-            w.max_number,
-            w.min_number,
-            w.deadline,
-            w.pre_deadline,
-            w.introduction,
-            w.price,
-            profiles.name;
+            workshops.id,
+            proposer.name;
     `;
 
-
-    var phase = db.one(stateSQL, {w_id}).then(w => {
-        if (w.state === 'judging') {
-            return 'judging';
-        } else if (w.state === 'judge_na') {
-            return 'judge_na';
-        } else if (w.state === 'judge_ac') {
-            return db.one(infoSQL, {w_id}).then(info => {
-                const time = Date.now();
-                info.pre_deadline = (+ info.pre_deadline);
-                info.min_number   = (+ info.pre_deadline);
-                if (info.pre_deadline < time) {
-                    //next_state = 3;
-                    return db
-                        .none(state_updateSQL, {w_id, state: 'unreached'})
-                        .then(() => 'unreached');
-                } else {
-                    return db.one(get_attendees_number_sql, {w_id}).then(({attendees_number}) => {
-                        attendees_number = (+ attendees_number);
-                        if (attendees_number < info.min_number) {
-                            //next_state = 2;
-                            return 'investigating'; // 調查中
-                        } else  {
-                            //next_state = 4;
-                            return db
-                                .none(state_updateSQL, {w_id, state: 'reached'})
-                                .then(() => 'reached');
-                        }
-                    });
-                }
-            })
-        } else if (w.state === 'unreached') {
-            return 'unreached';
-        } else if (w.state === 'reached') {
-            if ((+w.start_datetime) >= w.time) {
-                //next_state = 4;
-                return 'reached'; // 已達標
+    function source(index, data, delay) {
+        switch (index) {
+            case 0: {
+                return get_p_id.call(this, fb_id);
             }
-            if ((+w.end_datetime) < w.time) {
-                //next_state = 4;
-                return 'over'; // 已結束
+            case 1: {
+                const p_id = data;
+                return this.one(get_workshop_sql, {w_id, p_id});
+            }
+            case 2: {
+                let workshop = data;
+                const now=Date.now();
+                attach_phase_on_workshop(workshop, now);
+                workshop.attendees_number = (+ workshop.attendees_number);
+                delete workshop.state;
+                return workshop;
             }
         }
-    })
+    }
 
-    var attendees_number = db
-        .one(get_attendees_number_sql, {w_id})
-        .then(({attendees_number}) => (+ attendees_number));
-
-    var workshops = db.task(t => {
-        return t.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
-            return t.one(workshopsSQL, {w_id, p_id});
-        });
-    });
-
-    return Promise
-        .all([workshops, phase, attendees_number])
-        .then(([workshops, phase, attendees_number]) => {
-            workshops.phase = phase;
-            workshops.attendees_number = attendees_number;
-            return new Promise((resolve, reject) => {
-                resolve(workshops);
-            });
-        });
+    return db
+        .tx(t => t.sequence(source, {track: true}))
+        .then(data => data.slice(-1)[0])
+        .catch(err => { throw err.error });
 }
 
 // Attend
