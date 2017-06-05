@@ -23,13 +23,6 @@ const update_unreached_sql = `
     WHERE state = 'judge_ac' AND pre_deadline < $(now)
 `;
 
-// none(now) -> void
-const update_over_sql = `
-    UPDATE workshops
-    SET state='over'
-    WHERE state='reached' AND start_datetime < $(now)
-`;
-
 // none(w_id) -> void, only update workshop that attended
 const update_reached_sql = `
     UPDATE workshops
@@ -55,6 +48,8 @@ function attach_phase_on_workshop(workshop, now) {
         case 'reached':
             if (workshop.deadline < now) {
                 workshop.phase='closed';
+            } else if (workshop.end_datetime < now) {
+                workshop.phase='over';
             } else if (workshop.attendees_number == workshop.max_number) {
                 workshop.phase='full';
             } else {
@@ -72,10 +67,11 @@ function list(searchText, stateFilter) {
     var where = [];
     if (searchText) {
         // [TODO]:  temporarialy only search title.
-        where.push(`w.title ILIKE '%$<searchText:value>%'`);
+        where.push(`w.title ILIKE '%$(searchText:value)%'`);
     }
 
-    const workshops_sql = `
+    // any(searchText, stateFilter) -> [{attendees_number, ...workshop}]
+    const get_workshop_list_sql = `
         SELECT
             w.id as w_id,
             w.image_url,
@@ -99,29 +95,20 @@ function list(searchText, stateFilter) {
     `;
     function state_filter_predicate(workshop) {
         switch (stateFilter) {
-            case "0":
-                return false;
-            case "1":
-                return w.state=='reached';
-            case "2":
-                return w.state=='judge_ac';
-                // debug only
-            case "all":
-                return true;
-            default:
-                return (w.state=='reached') || (w.state=='judge_ac');
+            case "0":   return false;
+            case "1":   return w.state=='reached';
+            case "2":   return w.state=='judge_ac';
+            case "all": return true; // TODO: remove this when production
+            default:    return (w.state=='reached') || (w.state=='judge_ac');
         }
     }
     function source(index, data, delay) {
         const now=Date.now();
         switch (index) {
             case 0:
-                // transition state about time changing
-                var unreached = this.none(update_unreached_sql, {now});
-                var over = this.none(update_over_sql, {now});
-                return this.batch([unreached, over]);
+                return this.none(update_unreached_sql, {now});
             case 1:
-                return this.any(workshops_sql, {searchText, stateFilter});
+                return this.any(get_workshop_list_sql, {searchText, stateFilter});
             case 2:
                 var workshops = data;
                 for (let w of workshops) {
@@ -213,20 +200,28 @@ function show(w_id, fb_id) {
         WHERE w.id = $(w_id)
     `;
 
+    // all field of workshop except
+    //      id, created_at, updated_at, state(but need for gen phase)
+    // and addition
+    //      name(author name),
+    //      attendees_number,
+    //      attended,
+    //      phase
+
     const workshopsSQL = `
         SELECT
             w.image_url,
+            w.title,
+            w.location,
+            w.introduction,
+            w.content,
+            w.min_number,
+            w.max_number,
+            w.price,
             w.start_datetime,
             w.end_datetime,
-            w.location,
-            w.content,
-            w.title,
-            w.max_number,
-            w.min_number,
             w.deadline,
             w.pre_deadline,
-            w.introduction,
-            w.price,
             profiles.name as name,
             bool_or(attends.profile_id = $(p_id)) as attended
         FROM workshops as w
