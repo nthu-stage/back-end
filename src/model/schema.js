@@ -5,26 +5,22 @@ const db = pgp(process.env.DB_URL);
 const day_ms=24*3600*1000;
 
 const drop_schema_sql = `
--- Drop
-DROP TABLE IF EXISTS come_up_withs;
-DROP TABLE IF EXISTS likes;
-DROP TABLE IF EXISTS proposes;
-DROP TABLE IF EXISTS attends;
--- Drop
-DROP INDEX IF EXISTS profiles_idx_created_at;
-DROP INDEX IF EXISTS profiles_idx_updated_at;
--- Drop
-DROP TABLE IF EXISTS profiles;
-DROP TABLE IF EXISTS workshops;
-DROP TYPE IF EXISTS state;
-DROP TYPE IF EXISTS authority;
--- Drop
-DROP INDEX IF EXISTS ideas_idx_created_at;
-DROP INDEX IF EXISTS ideas_idx_updated_at;
-DROP INDEX IF EXISTS ideas_idx_skill;
-DROP INDEX IF EXISTS ideas_idx_goal;
-DROP TABLE IF EXISTS ideas;
-DROP TYPE  IF EXISTS idea_type;
+    DROP TABLE IF EXISTS come_up_withs;
+    DROP TABLE IF EXISTS likes;
+    DROP TABLE IF EXISTS proposes;
+    DROP TABLE IF EXISTS attends;
+    DROP INDEX IF EXISTS profiles_idx_created_at;
+    DROP INDEX IF EXISTS profiles_idx_updated_at;
+    DROP TABLE IF EXISTS profiles;
+    DROP TABLE IF EXISTS workshops;
+    DROP TYPE  IF EXISTS state;
+    DROP TYPE  IF EXISTS authority;
+    DROP INDEX IF EXISTS ideas_idx_created_at;
+    DROP INDEX IF EXISTS ideas_idx_updated_at;
+    DROP INDEX IF EXISTS ideas_idx_skill;
+    DROP INDEX IF EXISTS ideas_idx_goal;
+    DROP TABLE IF EXISTS ideas;
+    DROP TYPE  IF EXISTS idea_type;
 `;
 
 
@@ -45,15 +41,15 @@ CREATE TYPE state AS ENUM (
 );
 CREATE TABLE profiles (
     id                  serial PRIMARY KEY NOT NULL,
-    name                text NOT NULL,
-    email               text NOT NULL,
-    fb_userid           text NOT NULL,
-    picture_url         text NOT NULL,
-    authority           authority NOT NULL,
-    available_time      text NOT NULL,
-    last_login_datetime bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    created_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    updated_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000)
+    name                text      NOT NULL DEFAULT '',
+    email               text      NOT NULL DEFAULT '',
+    fb_userid           text      NOT NULL DEFAULT '',
+    picture_url         text      NOT NULL DEFAULT '',
+    available_time      text      NOT NULL DEFAULT '',
+    authority           authority NOT NULL DEFAULT 'user',
+    last_login_datetime bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
+    created_at          bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at          bigint    NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
 CREATE INDEX profiles_idx_created_at ON profiles USING btree(created_at);
 CREATE INDEX profiles_idx_updated_at ON profiles USING btree(updated_at);
@@ -62,22 +58,22 @@ CREATE INDEX profiles_idx_updated_at ON profiles USING btree(updated_at);
 const schemaWorkshopSql = `
 -- [workshops]
 CREATE TABLE workshops (
-    id                  serial PRIMARY KEY NOT NULL,
-    image_url           text,
-    title               text NOT NULL,
-    start_datetime      bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    end_datetime        bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    min_number          integer NOT NULL DEFAULT 0,
-    max_number          integer NOT NULL DEFAULT 0,
-    deadline            bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    pre_deadline        bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    location            text NOT NULL,
-    introduction        text NOT NULL DEFAULT '',
-    content             text NOT NULL DEFAULT '',
-    state               state NOT NULL,
-    price               integer NOT NULL DEFAULT 0,
-    created_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    updated_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000)
+    id             serial PRIMARY KEY NOT NULL,
+    image_url      text    NOT NULL DEFAULT '',
+    title          text    NOT NULL DEFAULT '',
+    location       text    NOT NULL DEFAULT '',
+    introduction   text    NOT NULL DEFAULT '',
+    content        text    NOT NULL DEFAULT '',
+    min_number     integer NOT NULL DEFAULT 0,
+    max_number     integer NOT NULL DEFAULT 0,
+    price          integer NOT NULL DEFAULT 0,
+    state          state   NOT NULL DEFAULT 'judging',
+    start_datetime bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    end_datetime   bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    deadline       bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    pre_deadline   bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    created_at     bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at     bigint  NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
 `;
 
@@ -91,12 +87,12 @@ CREATE TYPE idea_type AS ENUM (
 CREATE TABLE ideas (
     id         serial PRIMARY KEY NOT NULL,
     idea_type  idea_type NOT NULL,
-    skill      text NOT NULL,
-    goal       text NOT NULL,
-    web_url    text,
-    image_url  text,
-    created_at bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    updated_at bigint NOT NULL DEFAULT (extract(epoch from now())*1000)
+    skill      text      NOT NULL DEFAULT '',
+    goal       text      NOT NULL DEFAULT '',
+    web_url    text      NOT NULL DEFAULT '',
+    image_url  text      NOT NULL DEFAULT '',
+    created_at bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at bigint    NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
 CREATE INDEX ideas_idx_created_at ON ideas USING btree(created_at);
 CREATE INDEX ideas_idx_updated_at ON ideas USING btree(updated_at);
@@ -111,20 +107,20 @@ const schemaForeignSql = `
 -- that are referenced to the rows that are being deleted in the origin table
 -- Create
 CREATE TABLE come_up_withs (
-    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
-    idea_id             serial REFERENCES ideas(id) ON DELETE CASCADE
+    profile_id serial REFERENCES profiles(id) ON DELETE CASCADE,
+    idea_id    serial REFERENCES ideas(id)    ON DELETE CASCADE
 );
 CREATE TABLE likes (
-    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
-    idea_id             serial REFERENCES ideas(id) ON DELETE CASCADE
+    profile_id serial REFERENCES profiles(id) ON DELETE CASCADE,
+    idea_id    serial REFERENCES ideas(id)    ON DELETE CASCADE
 );
 CREATE TABLE proposes (
-    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
-    workshop_id         serial REFERENCES workshops(id) ON DELETE CASCADE
+    profile_id  serial REFERENCES profiles(id)  ON DELETE CASCADE,
+    workshop_id serial REFERENCES workshops(id) ON DELETE CASCADE
 );
 CREATE TABLE attends (
-    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
-    workshop_id         serial REFERENCES workshops(id) ON DELETE CASCADE
+    profile_id  serial REFERENCES profiles(id)  ON DELETE CASCADE,
+    workshop_id serial REFERENCES workshops(id) ON DELETE CASCADE
 );
 `;
 
