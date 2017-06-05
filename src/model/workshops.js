@@ -3,11 +3,8 @@ if (!global.db) {
     db = pgp(process.env.DB_URL);
 }
 
-// any(fb_id) -> [{id: p_id}]=[{id: 0}]
-const get_p_id_from_fb_sql = `
-    SELECT id
-    FROM profiles
-    WHERE fb_userid=$(fb_id)`;
+const fn = require('../fn.js');
+const get_p_id = fn.get_p_id;
 
 // one(p_id, w_id) -> {is_author}, if is_author == "0"
 const check_workshop_author_sql = `
@@ -102,6 +99,7 @@ function list(searchText, stateFilter) {
             default:    return (w.state=='reached') || (w.state=='judge_ac');
         }
     }
+
     function source(index, data, delay) {
         const now=Date.now();
         switch (index) {
