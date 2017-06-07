@@ -5,132 +5,132 @@ const db = pgp(process.env.DB_URL);
 const day_ms=24*3600*1000;
 
 const drop_schema_sql = `
-    DROP TABLE IF EXISTS come_up_withs;
-    DROP TABLE IF EXISTS likes;
-    DROP TABLE IF EXISTS proposes;
-    DROP TABLE IF EXISTS attends;
-    DROP INDEX IF EXISTS profiles_idx_created_at;
-    DROP INDEX IF EXISTS profiles_idx_updated_at;
-    DROP TABLE IF EXISTS profiles;
-    DROP TABLE IF EXISTS workshops;
-    DROP TYPE  IF EXISTS state;
-    DROP TYPE  IF EXISTS authority;
-    DROP INDEX IF EXISTS ideas_idx_created_at;
-    DROP INDEX IF EXISTS ideas_idx_updated_at;
-    DROP INDEX IF EXISTS ideas_idx_skill;
-    DROP INDEX IF EXISTS ideas_idx_goal;
-    DROP TABLE IF EXISTS ideas;
-    DROP TYPE  IF EXISTS idea_type;
+DROP TABLE IF EXISTS come_up_withs;
+DROP TABLE IF EXISTS likes;
+DROP TABLE IF EXISTS proposes;
+DROP TABLE IF EXISTS attends;
+DROP INDEX IF EXISTS profiles_idx_created_at;
+DROP INDEX IF EXISTS profiles_idx_updated_at;
+DROP TABLE IF EXISTS profiles;
+DROP TABLE IF EXISTS workshops;
+DROP TYPE  IF EXISTS state;
+DROP TYPE  IF EXISTS authority;
+DROP INDEX IF EXISTS ideas_idx_created_at;
+DROP INDEX IF EXISTS ideas_idx_updated_at;
+DROP INDEX IF EXISTS ideas_idx_skill;
+DROP INDEX IF EXISTS ideas_idx_goal;
+DROP TABLE IF EXISTS ideas;
+DROP TYPE  IF EXISTS idea_type;
 `;
 
 
 const schemaProfileSql = `
-    -- [profiles]
-    -- CREATE
-    CREATE TYPE authority AS ENUM (
-        'user',
-        'admin'
-    );
-    CREATE TYPE state AS ENUM (
-        'judging',
-        'judge_na',
-        'judge_ac',
-        'reached',
-        'unreached'
-    );
-    CREATE TABLE profiles (
-        id                  serial PRIMARY KEY NOT NULL,
-        name                text      NOT NULL DEFAULT '',
-        email               text      NOT NULL DEFAULT '',
-        fb_userid           text      NOT NULL DEFAULT '',
-        picture_url         text      NOT NULL DEFAULT '',
-        available_time      text      NOT NULL DEFAULT '',
-        authority           authority NOT NULL DEFAULT 'user',
-        last_login_datetime bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
-        created_at          bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
-        updated_at          bigint    NOT NULL DEFAULT (extract(epoch from now())*1000)
-    );
-    CREATE INDEX profiles_idx_created_at ON profiles USING btree(created_at);
-    CREATE INDEX profiles_idx_updated_at ON profiles USING btree(updated_at);
+-- [profiles]
+-- CREATE
+CREATE TYPE authority AS ENUM (
+    'user',
+    'admin'
+);
+CREATE TYPE state AS ENUM (
+    'judging',
+    'judge_na',
+    'judge_ac',
+    'reached',
+    'unreached'
+);
+CREATE TABLE profiles (
+    id                  serial PRIMARY KEY NOT NULL,
+    name                text      NOT NULL DEFAULT '',
+    email               text      NOT NULL DEFAULT '',
+    fb_userid           text      NOT NULL DEFAULT '',
+    picture_url         text      NOT NULL DEFAULT '',
+    available_time      text      NOT NULL DEFAULT '',
+    authority           authority NOT NULL DEFAULT 'user',
+    last_login_datetime bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
+    created_at          bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at          bigint    NOT NULL DEFAULT (extract(epoch from now())*1000)
+);
+CREATE INDEX profiles_idx_created_at ON profiles USING btree(created_at);
+CREATE INDEX profiles_idx_updated_at ON profiles USING btree(updated_at);
 `;
 
 const schemaWorkshopSql = `
-    -- [workshops]
-    CREATE TABLE workshops (
-        id             serial PRIMARY KEY NOT NULL,
-        image_url      text    NOT NULL DEFAULT '',
-        title          text    NOT NULL DEFAULT '',
-        location       text    NOT NULL DEFAULT '',
-        introduction   text    NOT NULL DEFAULT '',
-        content        text    NOT NULL DEFAULT '',
-        min_number     integer NOT NULL DEFAULT 0,
-        max_number     integer NOT NULL DEFAULT 0,
-        price          integer NOT NULL DEFAULT 0,
-        state          state   NOT NULL DEFAULT 'judging',
-        start_datetime bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
-        end_datetime   bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
-        deadline       bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
-        pre_deadline   bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
-        created_at     bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
-        updated_at     bigint  NOT NULL DEFAULT (extract(epoch from now())*1000)
-    );
+-- [workshops]
+CREATE TABLE workshops (
+    id             serial PRIMARY KEY NOT NULL,
+    image_url      text    NOT NULL DEFAULT '',
+    title          text    NOT NULL DEFAULT '',
+    location       text    NOT NULL DEFAULT '',
+    introduction   text    NOT NULL DEFAULT '',
+    content        text    NOT NULL DEFAULT '',
+    min_number     integer NOT NULL DEFAULT 0,
+    max_number     integer NOT NULL DEFAULT 0,
+    price          integer NOT NULL DEFAULT 0,
+    state          state   NOT NULL DEFAULT 'judging',
+    start_datetime bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    end_datetime   bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    deadline       bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    pre_deadline   bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    created_at     bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at     bigint  NOT NULL DEFAULT (extract(epoch from now())*1000)
+);
 `;
 
 const schemaIdeaSql = `
-    -- [ideas]
-    -- CREATE
-    CREATE TYPE idea_type AS ENUM (
-        'teach',
-        'learn'
-    );
-    CREATE TABLE ideas (
-        id         serial PRIMARY KEY NOT NULL,
-        idea_type  idea_type NOT NULL,
-        skill      text      NOT NULL DEFAULT '',
-        goal       text      NOT NULL DEFAULT '',
-        web_url    text      NOT NULL DEFAULT '',
-        image_url  text      NOT NULL DEFAULT '',
-        created_at bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
-        updated_at bigint    NOT NULL DEFAULT (extract(epoch from now())*1000)
-    );
-    CREATE INDEX ideas_idx_created_at ON ideas USING btree(created_at);
-    CREATE INDEX ideas_idx_updated_at ON ideas USING btree(updated_at);
-    CREATE INDEX ideas_idx_skill      ON ideas USING gin(skill gin_trgm_ops);
-    CREATE INDEX ideas_idx_goal       ON ideas USING gin(goal gin_trgm_ops);
+-- [ideas]
+-- CREATE
+CREATE TYPE idea_type AS ENUM (
+    'teach',
+    'learn'
+);
+CREATE TABLE ideas (
+    id         serial PRIMARY KEY NOT NULL,
+    idea_type  idea_type NOT NULL,
+    skill      text      NOT NULL DEFAULT '',
+    goal       text      NOT NULL DEFAULT '',
+    web_url    text      NOT NULL DEFAULT '',
+    image_url  text      NOT NULL DEFAULT '',
+    created_at bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at bigint    NOT NULL DEFAULT (extract(epoch from now())*1000)
+);
+CREATE INDEX ideas_idx_created_at ON ideas USING btree(created_at);
+CREATE INDEX ideas_idx_updated_at ON ideas USING btree(updated_at);
+CREATE INDEX ideas_idx_skill      ON ideas USING gin(skill gin_trgm_ops);
+CREATE INDEX ideas_idx_goal       ON ideas USING gin(goal gin_trgm_ops);
 `;
 
 const schemaForeignSql = `
-    -- [foreign]
-    -- ON DELETE CASCADE:
-    -- will delete all rows in the foreign table
-    -- that are referenced to the rows that are being deleted in the origin table
-    -- Create
-    CREATE TABLE come_up_withs (
-        profile_id serial REFERENCES profiles(id) ON DELETE CASCADE,
-        idea_id    serial REFERENCES ideas(id)    ON DELETE CASCADE
-    );
-    CREATE TABLE likes (
-        profile_id serial REFERENCES profiles(id) ON DELETE CASCADE,
-        idea_id    serial REFERENCES ideas(id)    ON DELETE CASCADE
-    );
-    CREATE TABLE proposes (
-        profile_id  serial REFERENCES profiles(id)  ON DELETE CASCADE,
-        workshop_id serial REFERENCES workshops(id) ON DELETE CASCADE
-    );
-    CREATE TABLE attends (
-        profile_id  serial REFERENCES profiles(id)  ON DELETE CASCADE,
-        workshop_id serial REFERENCES workshops(id) ON DELETE CASCADE
-    );
+-- [foreign]
+-- ON DELETE CASCADE:
+-- will delete all rows in the foreign table
+-- that are referenced to the rows that are being deleted in the origin table
+-- Create
+CREATE TABLE come_up_withs (
+    profile_id serial REFERENCES profiles(id) ON DELETE CASCADE,
+    idea_id    serial REFERENCES ideas(id)    ON DELETE CASCADE
+);
+CREATE TABLE likes (
+    profile_id serial REFERENCES profiles(id) ON DELETE CASCADE,
+    idea_id    serial REFERENCES ideas(id)    ON DELETE CASCADE
+);
+CREATE TABLE proposes (
+    profile_id  serial REFERENCES profiles(id)  ON DELETE CASCADE,
+    workshop_id serial REFERENCES workshops(id) ON DELETE CASCADE
+);
+CREATE TABLE attends (
+    profile_id  serial REFERENCES profiles(id)  ON DELETE CASCADE,
+    workshop_id serial REFERENCES workshops(id) ON DELETE CASCADE
+);
 `;
 
 const schemaSql = `
-    -- Extensions
-    CREATE EXTENSION IF NOT EXISTS pg_trgm;
-    ${drop_schema_sql}
-    ${schemaProfileSql}
-    ${schemaIdeaSql}
-    ${schemaWorkshopSql}
-    ${schemaForeignSql}
+-- Extensions
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+${drop_schema_sql}
+${schemaProfileSql}
+${schemaIdeaSql}
+${schemaWorkshopSql}
+${schemaForeignSql}
 `;
 
 function genRandomAvaiTime() {
@@ -143,11 +143,11 @@ function genRandomAvaiTime() {
 
 function genDummyProfiles() {
     const n = 7;
-    const names = ['Apple', 'Bike', 'Car', 'Dog', 'Ear', 'Race', 'Rust'];
-    const fb_suerids = ['1514864711922034', '1833867746937550', '1234', '9527', '1036', '9487', '9062']
-    var sql = new String();
+    const names      = ['Apple',            'Bike',             'Car',  'Dog',  'Ear',  'Race', 'Rust'];
+    const fb_suerids = ['1514864711922034', '1833867746937550', '1234', '9527', '1036', '9487', '9062'];
+    var sql = '';
     for (let i=0; i<n; i++) {
-       sql += `
+        sql += `
         INSERT INTO profiles(
             name,
             email,
@@ -170,7 +170,7 @@ function genDummyProfiles() {
             ${Date.now() - (n-i) * day_ms},
             ${Date.now() - (n-i) * day_ms}
         );
-    `;
+        `;
     }
     return sql;
 }
@@ -180,9 +180,9 @@ function genDummyWorkshops() {
     const titles    = ['React',   'Git',      'Archi',    'Linux',   'Stage'];
     const locations = ['London',  'Tokyo',    'Rome',     'Taipei',  'Hsinchu'];
     const phases    = ['judging', 'judge_na', 'judge_ac', 'reached', 'unreached'];
-    var sql = new String();
+    var sql = '';
     for (let i=0; i<n; i++) {
-       sql += `
+        sql += `
         INSERT INTO workshops(
             title,
             start_datetime,
@@ -211,7 +211,7 @@ function genDummyWorkshops() {
             ${Date.now()},
             ${Date.now()}
         );
-    `;
+        `;
     }
     return sql;
 }
@@ -222,9 +222,9 @@ function genDummyIdeas() {
     const idea_types = ['learn', 'teach'];
     const skills=['Fire', 'Desire', 'Gun',   'Radio', 'Piano',  'Skin',  'Spot', 'Silence'];
     const goals=['Burn',  'Death',  'Shoot', 'Sound', 'Melody', 'Touch', 'View', 'Noise'];
-    var sql = new String();
+    var sql = '';
     for (let i=0; i<n; i++) {
-       sql += `
+        sql += `
         INSERT INTO ideas(
             idea_type,
             skill,
@@ -243,21 +243,21 @@ function genDummyIdeas() {
             ${Date.now() - (n-i)*day_ms},
             ${Date.now() - (n-i)*day_ms}
         );
-    `;
+        `;
     }
     return sql;
 }
 
 function genProposeTable() {
     // all workshop need to be created by someone
-    var sql = new String();
+    var sql = '';
     const ps = [5, 1, 2, 6, 4];
     for (let i=0; i<5; i++) {
         sql+=`
-            INSERT INTO proposes VALUES(
-                ${ps[i]},   -- profile_id
-                ${i+1}      -- workshop_id
-            );
+        INSERT INTO proposes VALUES(
+            ${ps[i]},   -- profile_id
+            ${i+1}      -- workshop_id
+        );
         `;
     }
     return sql;
@@ -265,7 +265,7 @@ function genProposeTable() {
 
 function genAttendTable() {
     // one profile could attends multiple workshop
-    var sql = new String();
+    var sql = '';
     // profile 2 attends nothing
     // noeone want to attends workshop 3
     const ary = [
@@ -277,10 +277,10 @@ function genAttendTable() {
     ];
     for (let [p, w] of ary) {
         sql+=`
-            INSERT INTO attends VALUES(
+        INSERT INTO attends VALUES(
             ${p},
             ${w}
-            );
+        );
         `;
     }
     return sql;
@@ -288,7 +288,7 @@ function genAttendTable() {
 
 function genLikeTable() {
     // one profile could attends multiple workshop
-    var sql = new String();
+    var sql = '';
     // profile 5 dont likes anyone
     // noone likes idea 7
     const ary = [
@@ -301,10 +301,10 @@ function genLikeTable() {
     ];
     for (let [p, i] of ary) {
         sql+=`
-            INSERT INTO likes VALUES(
+        INSERT INTO likes VALUES(
             ${p},
             ${i}
-            );
+        );
         `;
     }
     return sql;
@@ -312,10 +312,10 @@ function genLikeTable() {
 
 function genComeUpWithTable() {
     // all idea need to be created by someone
-    var sql = new String();
+    var sql = '';
     for (let i=0; i<8; i++) {
         sql+=`
-            INSERT INTO come_up_withs VALUES(
+        INSERT INTO come_up_withs VALUES(
             ${Math.floor(Math.random()*7)+1},
             ${i+1}
         );
@@ -325,13 +325,13 @@ function genComeUpWithTable() {
 }
 
 const dataSql = `
-    ${genDummyProfiles()}
-    ${genDummyWorkshops()}
-    ${genDummyIdeas()}
-    ${genProposeTable()}
-    ${genAttendTable()}
-    ${genLikeTable()}
-    ${genComeUpWithTable()}
+${genDummyProfiles()}
+${genDummyWorkshops()}
+${genDummyIdeas()}
+${genProposeTable()}
+${genAttendTable()}
+${genLikeTable()}
+${genComeUpWithTable()}
 `;
 
 db.none(schemaSql)
@@ -345,8 +345,7 @@ db.none(schemaSql)
                 console.log('Error populated data', err);
                 pgp.end();
             });
-    })
-    .catch(err => {
+    }).catch(err => {
         console.log('Error creating schema', err);
         pgp.end();
     });

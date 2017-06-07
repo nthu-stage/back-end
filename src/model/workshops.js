@@ -8,30 +8,30 @@ const get_p_id = fn.get_p_id;
 
 // one(p_id, w_id) -> {is_author}, if is_author == "0"
 const check_workshop_author_sql = `
-    SELECT COUNT(*) AS is_author
-    FROM proposes
-    WHERE profile_id=$(p_id) AND workshop_id=$(w_id)
+SELECT COUNT(*) AS is_author
+FROM proposes
+WHERE profile_id=$(p_id) AND workshop_id=$(w_id)
 `;
 
 // none(now) -> void
 const update_unreached_sql = `
-    UPDATE workshops
-    SET state = 'unreached'
-    WHERE state = 'judge_ac' AND pre_deadline < $(now)
+UPDATE workshops
+SET state = 'unreached'
+WHERE state = 'judge_ac' AND pre_deadline < $(now)
 `;
 
 // none(w_id) -> void, only update workshop that attended
 const update_reached_sql = `
-    UPDATE workshops
-    SET state='reached'
-    WHERE state='judge_ac' AND $(attendees_number) >= min_number
+UPDATE workshops
+SET state='reached'
+WHERE state='judge_ac' AND $(attendees_number) >= min_number
 `;
 
 // one(w_id) -> {attendees_number}
 const get_attendees_number_sql = `
-    SELECT count(*) AS attendees_number
-    FROM attends
-    WHERE workshop_id = $(w_id);
+SELECT count(*) AS attendees_number
+FROM attends
+WHERE workshop_id = $(w_id);
 `;
 
 function attach_phase_on_workshop(workshop, now) {
@@ -69,26 +69,26 @@ function list(searchText, stateFilter) {
 
     // any(searchText, stateFilter) -> [{attendees_number, ...workshop}]
     const get_workshop_list_sql = `
-        SELECT
-            w.id as w_id,
-            w.image_url,
-            w.title,
-            w.min_number,
-            w.max_number,
-            w.deadline,
-            w.pre_deadline,
-            w.introduction,
-            w.price,
-            COUNT(a.profile_id) AS attendees_number,
-            w.start_datetime,
-            w.end_datetime,
-            w.state
-        FROM workshops AS w
-        LEFT JOIN attends AS a
-        ON w.id = a.workshop_id
-        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-        GROUP BY w.id
-        ORDER BY w.deadline ASC
+    SELECT
+    w.id as w_id,
+        w.image_url,
+        w.title,
+        w.min_number,
+        w.max_number,
+        w.deadline,
+        w.pre_deadline,
+        w.introduction,
+        w.price,
+        COUNT(a.profile_id) AS attendees_number,
+        w.start_datetime,
+        w.end_datetime,
+        w.state
+    FROM workshops AS w
+    LEFT JOIN attends AS a
+    ON w.id = a.workshop_id
+    ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+    GROUP BY w.id
+    ORDER BY w.deadline ASC
     `;
     function state_filter_predicate(workshop) {
         switch (stateFilter) {
@@ -119,7 +119,7 @@ function list(searchText, stateFilter) {
     return db
         .tx(t => t.sequence(source, {track: true}))
         .then(data => data.slice(-1)[0])
-        .catch(err => { throw err.error });
+        .catch(err => { throw err.error; });
 }
 
 function propose(
@@ -138,30 +138,30 @@ function propose(
     state
 ){
     const workshopsSQL = `
-        INSERT INTO workshops ($<this:name>)
-        VALUES (
-            $(image_url),
-            $(start_datetime),
-            $(end_datetime),
-            $(location),
-            $(content),
-            $(title),
-            $(min_number),
-            $(max_number),
-            $(deadline),
-            $(introduction),
-            $(price),
-            $(state)
-        )
-        RETURNING workshops.id as w_id;
+    INSERT INTO workshops ($<this:name>)
+    VALUES (
+        $(image_url),
+        $(start_datetime),
+        $(end_datetime),
+        $(location),
+        $(content),
+        $(title),
+        $(min_number),
+        $(max_number),
+        $(deadline),
+        $(introduction),
+        $(price),
+        $(state)
+    )
+    RETURNING workshops.id as w_id;
     `;
 
     const proposeSQL = `
-        INSERT INTO proposes
-        SELECT profiles.id, workshops.id
-        FROM profiles, workshops
-        WHERE profiles.fb_userid = $1 AND workshops.id = $2
-        RETURNING workshop_id AS w_id;
+    INSERT INTO proposes
+    SELECT profiles.id, workshops.id
+    FROM profiles, workshops
+    WHERE profiles.fb_userid = $1 AND workshops.id = $2
+    RETURNING workshop_id AS w_id;
     `;
 
     return db.one(workshopsSQL, {
@@ -188,11 +188,11 @@ function show(w_id, fb_id) {
 
     // one(w_id) -> {workshop_id, name}
     const get_proposer_sql = `
-        SELECT workshop_id, name
-        FROM profiles
-        INNER JOIN proposes
-        ON profiles.id=proposes.profile_id
-        WHERE workshop_id=$(w_id)
+    SELECT workshop_id, name
+    FROM profiles
+    INNER JOIN proposes
+    ON profiles.id=proposes.profile_id
+    WHERE workshop_id=$(w_id)
     `;
 
     // one(w_id, p_id) ->
@@ -204,34 +204,34 @@ function show(w_id, fb_id) {
     //      attended,
     //      phase
     const get_workshop_sql = `
-        SELECT
-            image_url,
-            title,
-            location,
-            introduction,
-            content,
-            min_number,
-            max_number,
-            price,
-            state,
-            start_datetime,
-            end_datetime,
-            deadline,
-            pre_deadline,
-            proposer.name AS name,
-            COUNT(attends.profile_id) AS attendees_number,
-            bool_or(attends.profile_id=$(p_id)) AS attended
-        FROM workshops
-        INNER JOIN (
-            ${get_proposer_sql}
-        ) AS proposer
-        ON proposer.workshop_id=workshops.id
-        LEFT JOIN attends
-        on attends.workshop_id=workshops.id
-        WHERE workshops.id=$(w_id)
-        GROUP BY
-            workshops.id,
-            proposer.name;
+    SELECT
+    image_url,
+        title,
+        location,
+        introduction,
+        content,
+        min_number,
+        max_number,
+        price,
+        state,
+        start_datetime,
+        end_datetime,
+        deadline,
+        pre_deadline,
+        proposer.name AS name,
+        COUNT(attends.profile_id) AS attendees_number,
+        bool_or(attends.profile_id=$(p_id)) AS attended
+    FROM workshops
+    INNER JOIN (
+        ${get_proposer_sql}
+    ) AS proposer
+    ON proposer.workshop_id=workshops.id
+    LEFT JOIN attends
+    on attends.workshop_id=workshops.id
+    WHERE workshops.id=$(w_id)
+    GROUP BY
+    workshops.id,
+        proposer.name;
     `;
 
     function source(index, data, delay) {
@@ -257,27 +257,27 @@ function show(w_id, fb_id) {
     return db
         .tx(t => t.sequence(source, {track: true}))
         .then(data => data.slice(-1)[0])
-        .catch(err => { throw err.error });
+        .catch(err => { throw err.error; });
 }
 
 // Attend
 function attend(w_id, fb_id) {
     const stateSQL = `
-        SELECT workshops.state
-        FROM workshops
-        WHERE workshops.id = $(w_id)
+    SELECT workshops.state
+    FROM workshops
+    WHERE workshops.id = $(w_id)
     `;
 
     const infoSQL =  `
-        SELECT w.pre_deadline
-        FROM workshops as w
-        WHERE w.id = $(w_id);
+    SELECT w.pre_deadline
+    FROM workshops as w
+    WHERE w.id = $(w_id);
     `;
 
     const state_updateSQL = `
-        UPDATE workshops
-        SET state = $(state)
-        WHERE workshops.id = $(w_id);
+    UPDATE workshops
+    SET state = $(state)
+    WHERE workshops.id = $(w_id);
     `;
 
     const toggle_attendSQL = `
@@ -294,9 +294,9 @@ function attend(w_id, fb_id) {
     `;
 
     const attend_checkSQL = `
-        SELECT count(attends.profile_id) as attended
-        FROM attends
-        WHERE attends.profile_id = $(p_id) AND attends.workshop_id = $(w_id);
+    SELECT count(attends.profile_id) as attended
+    FROM attends
+    WHERE attends.profile_id = $(p_id) AND attends.workshop_id = $(w_id);
     `;
 
     return db.one(stateSQL, {w_id}).then(w => {
@@ -318,7 +318,7 @@ function attend(w_id, fb_id) {
                         }
                         return db.none(toggle_attendSQL, {p_id, w_id}).then(() => {
                             return db.one(attend_checkSQL, {p_id, w_id});
-                        })
+                        });
                     });
                 }
             });
@@ -364,8 +364,8 @@ function attendees(w_id, fb_id) {
 
 function delete_(w_id, fb_id) {
     const sql = `
-        DELETE FROM workshops
-        WHERE id=$(w_id)
+    DELETE FROM workshops
+    WHERE id=$(w_id)
     `;
     return db.task(t => {
         return t.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
@@ -415,21 +415,21 @@ function update(
         price
     };
     const sql = `
-        UPDATE workshops
-        SET
-            image_url      = $(image_url),
-            start_datetime = $(start_datetime),
-            end_datetime   = $(end_datetime),
-            location       = $(location),
-            content        = $(content),
-            title          = $(title),
-            min_number     = $(min_number),
-            max_number     = $(max_number),
-            deadline       = $(deadline),
-            introduction   = $(introduction),
-            price          = $(price)
-        WHERE id=$(w_id)
-        RETURNING *;
+    UPDATE workshops
+    SET
+    image_url      = $(image_url),
+        start_datetime = $(start_datetime),
+        end_datetime   = $(end_datetime),
+        location       = $(location),
+        content        = $(content),
+        title          = $(title),
+        min_number     = $(min_number),
+        max_number     = $(max_number),
+        deadline       = $(deadline),
+        introduction   = $(introduction),
+        price          = $(price)
+    WHERE id=$(w_id)
+    RETURNING *;
     `;
     return db.task(t => {
         return t.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {

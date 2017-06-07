@@ -14,13 +14,13 @@ SELECT COUNT(*) AS is_author FROM come_up_withs WHERE profile_id=$(p_id) AND ide
 function list(searchText, order, fb_id=null) {
     // [TODO]: search priority skill > goal.
     const search = ['skill', 'goal'].map(s => {
-        return `${s} ILIKE '%$2:value%'`
+        return `${s} ILIKE '%$2:value%'`;
     });
     // $1 = p_id
     const user_likes_sql = `SELECT * FROM likes WHERE likes.profile_id = $1 `;
     const liked_sql = `
     SELECT
-        ideas.id AS id, COUNT(user_likes.profile_id) AS liked
+    ideas.id AS id, COUNT(user_likes.profile_id) AS liked
     FROM ideas
     LEFT JOIN (
         ${user_likes_sql}
@@ -30,7 +30,7 @@ function list(searchText, order, fb_id=null) {
     `;
     const like_number_sql = `
     SELECT
-        ideas.id AS id, COUNt(likes.profile_id) AS like_number
+    ideas.id AS id, COUNt(likes.profile_id) AS like_number
     FROM ideas
     LEFT JOIN likes
     ON likes.idea_id = ideas.id
@@ -39,7 +39,7 @@ function list(searchText, order, fb_id=null) {
     `;
     const sql = `
     SELECT
-        i.id AS i_id, idea_type, skill, goal, like_number, liked
+    i.id AS i_id, idea_type, skill, goal, like_number, liked
     FROM ideas as i
     LEFT JOIN (
         ${liked_sql}
@@ -62,123 +62,123 @@ function list(searchText, order, fb_id=null) {
 
 function show (i_id, fb_id) {
     const profile_availableSQL = `
-        SELECT profiles.available_time
-        FROM profiles
-        INNER JOIN likes
-        on likes.idea_id = $1
-        AND likes.profile_id = profiles.id;
+    SELECT profiles.available_time
+    FROM profiles
+    INNER JOIN likes
+    on likes.idea_id = $1
+    AND likes.profile_id = profiles.id;
     `;
 
     const profilesSQL = `
-        SELECT profiles.id
-        FROM profiles
-        WHERE profiles.fb_userid = $1;
+    SELECT profiles.id
+    FROM profiles
+    WHERE profiles.fb_userid = $1;
     `;
 
     const ideasSQL = `
-        SELECT
-            i.id as i_id,
-            i.idea_type as idea_type,
-            i.skill,
-            i.goal,
-            count(l1.profile_id) as like_number,
-            i.web_url,
-            i.image_url,
-            profiles.picture_url,
-            profiles.name,
-            bool_and(come_up_withs.profile_id = $2) as "isEditor",
-            bool_or(l1.profile_id = $2) as liked
-        FROM ideas as i
-        INNER JOIN come_up_withs
-        on come_up_withs.idea_id = i.id AND i.id = $1
-        INNER JOIN profiles
-        on profiles.id = come_up_withs.profile_id
-        LEFT JOIN likes l1
-        on l1.idea_id = $1
-        GROUP BY
-            i.id,
-            i.idea_type,
-            i.skill,
-            i.goal,
-            i.web_url,
-            i.image_url,
-            profiles.picture_url,
-            profiles.name;
+    SELECT
+    i.id as i_id,
+        i.idea_type as idea_type,
+        i.skill,
+        i.goal,
+        count(l1.profile_id) as like_number,
+        i.web_url,
+        i.image_url,
+        profiles.picture_url,
+        profiles.name,
+        bool_and(come_up_withs.profile_id = $2) as "isEditor",
+        bool_or(l1.profile_id = $2) as liked
+    FROM ideas as i
+    INNER JOIN come_up_withs
+    on come_up_withs.idea_id = i.id AND i.id = $1
+    INNER JOIN profiles
+    on profiles.id = come_up_withs.profile_id
+    LEFT JOIN likes l1
+    on l1.idea_id = $1
+    GROUP BY
+    i.id,
+        i.idea_type,
+        i.skill,
+        i.goal,
+        i.web_url,
+        i.image_url,
+        profiles.picture_url,
+        profiles.name;
     `;
 
     return db.task(t => {
         return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
             //Calculate top 5
             var mostAvaiTime = db.any(profile_availableSQL, i_id)
-            .then(schedule => {
-                var available = [];
+                .then(schedule => {
+                    var available = [];
 
-                for(let i=0 ; i<21 ; i++) {
-                    available.push({
-                        time: i,
-                        people: 0
-                    });
-                }
-
-                for(let i of schedule) {
-                    let count = 0;
-                    let time = 0;
-                    while(count < i.available_time.length) {
-                        if(i.available_time[count] === 't') {
-                            available[time].people += 1;
-                            time += 1;
-                        } else if(i.available_time[count] === 'f') {
-                            time += 1;
-                        }
-                        count += 1;
+                    for(let i=0 ; i<21 ; i++) {
+                        available.push({
+                            time: i,
+                            people: 0
+                        });
                     }
-                }
 
-                available.sort(function(a,b){ return b.people - a.people});
-                // console.log(available);
-                return available.slice(0, 5);
-            })
+                    for(let i of schedule) {
+                        let count = 0;
+                        let time = 0;
+                        while(count < i.available_time.length) {
+                            if(i.available_time[count] === 't') {
+                                available[time].people += 1;
+                                time += 1;
+                            } else if(i.available_time[count] === 'f') {
+                                time += 1;
+                            }
+                            count += 1;
+                        }
+                    }
+
+                    available.sort(function(a,b){ return b.people - a.people; });
+                    // console.log(available);
+                    return available.slice(0, 5);
+                });
 
             var ideas = db.one(ideasSQL, [i_id, p_id]);
 
             return Promise.all([ideas, mostAvaiTime])
-            .then(([ideas, mostAvaiTime]) => {
-                ideas.mostAvaiTime = mostAvaiTime;
-                return new Promise((resolve, reject) => {
-                    resolve(ideas);
-                })
-            })
+                .then(([ideas, mostAvaiTime]) => {
+                    ideas.mostAvaiTime = mostAvaiTime;
+                    return new Promise((resolve, reject) => {
+                        resolve(ideas);
+                    });
+                });
         });
     });
 }
 
 function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
     const ideasSQL = `
-        INSERT INTO ideas ($<this:name>)
-        VALUES (
-            $(idea_type),
-            $(skill),
-            $(goal),
-            $(web_url),
-            $(image_url)
-        )
-        RETURNING id as i_id;
+    INSERT INTO ideas ($<this:name>)
+    VALUES (
+        $(idea_type),
+        $(skill),
+        $(goal),
+        $(web_url),
+        $(image_url)
+    )
+    RETURNING id as i_id;
     `;
 
     const comeUpWithSQL = `
-        INSERT INTO come_up_withs
-        SELECT profiles.id, ideas.id
-        FROM profiles
-        INNER JOIN ideas
-        on profiles.fb_userid = $1
-        AND ideas.id = $2;
+    INSERT INTO come_up_withs
+    SELECT profiles.id, ideas.id
+    FROM profiles
+    INNER JOIN ideas
+    on profiles.fb_userid = $1
+    AND ideas.id = $2;
     `;
 
     return db.one(ideasSQL,{idea_type, skill, goal, web_url, image_url})
-    .then(ideas => {
-        db.none(comeUpWithSQL, [fb_id, ideas.i_id]);
-        return ideas;
-    })
+        .then(ideas => {
+            db.none(comeUpWithSQL, [fb_id, ideas.i_id]);
+            return ideas;
+        });
 }
 
 function like(i_id, fb_id) {
@@ -219,17 +219,17 @@ function like(i_id, fb_id) {
                 return Promise.all([liked, like_number]).then(([{liked}, {like_number}]) => {
                     return new Promise((resolve, reject) => {
                         resolve({i_id, liked: liked==="1", like_number});
-                    })
-                })
-            })
+                    });
+                });
+            });
         });
     });
 }
 
 function remove(i_id, fb_id) {
     const delete_idea_sql = `
-        DELETE FROM ideas
-        WHERE id=$(i_id)
+    DELETE FROM ideas
+    WHERE id=$(i_id)
     `;
 
     return db.task(t => {
@@ -261,7 +261,7 @@ function update(i_id, fb_id, skill, goal, web_url, image_url) {
     const update_idea_sql = `
     UPDATE ideas
     SET
-        skill     = $(skill),
+    skill     = $(skill),
         goal      = $(goal),
         web_url   = $(web_url),
         image_url = $(image_url)
