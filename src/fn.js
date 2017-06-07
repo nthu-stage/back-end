@@ -9,7 +9,7 @@ function tsWrapper (object, prop) {
 }
 
 function get_p_id (fb_id, options = {required: false}) {
-    // console.log('get_p_id()');
+    // get_p_id.call(db, fb_id, {required: true})
     const get_p_id_from_fb_sql = `
     SELECT id
     FROM profiles

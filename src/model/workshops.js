@@ -69,8 +69,7 @@ function list(searchText, stateFilter) {
 
     // any(searchText, stateFilter) -> [{attendees_number, ...workshop}]
     const get_workshop_list_sql = `
-    SELECT
-    w.id as w_id,
+    SELECT w.id AS w_id,
         w.image_url,
         w.title,
         w.min_number,
@@ -103,16 +102,19 @@ function list(searchText, stateFilter) {
     function source(index, data, delay) {
         const now=Date.now();
         switch (index) {
-            case 0:
+            case 0: {
                 return this.none(update_unreached_sql, {now});
-            case 1:
+            }
+            case 1: {
                 return this.any(get_workshop_list_sql, {searchText, stateFilter});
-            case 2:
-                var workshops = data;
+            }
+            case 2: {
+                let workshops = data;
                 for (let w of workshops) {
                     attach_phase_on_workshop(w, now);
                 }
                 return workshops.filter(state_filter_predicate);
+            }
         }
     }
 
@@ -235,17 +237,20 @@ function show(w_id, fb_id) {
     `;
 
     function source(index, data, delay) {
+        const now=Date.now();
         switch (index) {
             case 0: {
-                return get_p_id.call(this, fb_id);
+                return this.none(update_unreached_sql, {now});
             }
             case 1: {
+                return get_p_id.call(this, fb_id);
+            }
+            case 2: {
                 const p_id = data;
                 return this.one(get_workshop_sql, {w_id, p_id});
             }
-            case 2: {
+            case 3: {
                 let workshop = data;
-                const now=Date.now();
                 attach_phase_on_workshop(workshop, now);
                 workshop.attendees_number = (+ workshop.attendees_number);
                 delete workshop.state;
