@@ -6,13 +6,6 @@ if (!global.db) {
 const fn = require('../fn.js');
 const get_p_id = fn.get_p_id;
 
-// one(p_id, w_id) -> {is_author}, if is_author == "0"
-const check_workshop_author_sql = `
-SELECT COUNT(*) AS is_author
-FROM proposes
-WHERE profile_id=$(p_id) AND workshop_id=$(w_id)
-`;
-
 // none(now) -> void
 const update_unreached_sql = `
 UPDATE workshops
@@ -33,6 +26,26 @@ SELECT count(*) AS attendees_number
 FROM attends
 WHERE workshop_id = $(w_id);
 `;
+
+function check_workshop_author(w_id, p_id) {
+    // one(p_id, w_id) -> {is_author}, if is_author == "0"
+    const sql = `
+    SELECT COUNT(*) AS is_author
+    FROM proposes
+    WHERE profile_id=$(p_id) AND workshop_id=$(w_id)
+    `;
+
+    return this
+        .one(check_workshop_author_sql, {p_id, w_id})
+        .then(({is_author}) => {
+            if (is_author == "0") {
+                const err = new Error('Cannot match user and workshop.');
+                err.status = 400;
+                throw err;
+            }
+            return true;
+        });
+}
 
 function attach_phase_on_workshop(workshop, now) {
     // workshop should contain state, deadline, max_number,
@@ -335,36 +348,35 @@ function attend(w_id, fb_id) {
 
 // attendees (dashboard)
 function attendees(w_id, fb_id) {
-    const attendees_id_sql = `
-    SELECT profile_id FROM attends WHERE workshop_id=$(w_id)
-    `;
-
+    // any(w_id)
     const sql = `
     SELECT name, email
     FROM profiles
-    INNER JOIN (
-        ${attendees_id_sql}
-    ) AS a
-    ON id=a.profile_id
+    INNER JOIN attends
+    ON id=attends.profile_id
+    WHERE workshop_id=$(w_id)
     `;
 
-    return db.task(t => {
-        return t.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
-            if (p_id ===0 ) {
-                const err = new Error('Cannot found this fb user in database.');
-                err.status = 400;
-                throw err;
+    function source(index, data, delay) {
+        const now=Date.now();
+        switch (index) {
+            case 0: {
+                return get_p_id.call(this, fb_id, {required: true});
             }
-            return t.one(check_workshop_author_sql, {p_id, w_id}).then(( {is_author} ) => {
-                if (is_author == "0") {
-                    const err = new Error('Cannot match user and workshop.');
-                    err.status = 400;
-                    throw err;
-                }
-                return t.any(sql, {w_id});
-            });
-        });
-    });
+            case 1: {
+                const p_id = data;
+                return check_workshop_author.call(this, w_id, p_id);
+            }
+            case 2: {
+                return this.any(sql, {w_id});
+            }
+        }
+    }
+
+    return db
+        .tx(t => t.sequence(source, {track: true}))
+        .then(data => data.slice(-1)[0])
+        .catch(err => { throw err.error; });
 }
 
 function delete_(w_id, fb_id) {
