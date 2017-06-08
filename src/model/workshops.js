@@ -420,23 +420,10 @@ function update(
     introduction,
     price
 ){
-    const obj = {
-        image_url,
-        start_datetime,
-        end_datetime,
-        location,
-        content,
-        title,
-        min_number,
-        max_number,
-        deadline,
-        introduction,
-        price
-    };
     const sql = `
     UPDATE workshops
     SET
-    image_url      = $(image_url),
+        image_url      = $(image_url),
         start_datetime = $(start_datetime),
         end_datetime   = $(end_datetime),
         location       = $(location),
@@ -450,24 +437,27 @@ function update(
     WHERE id=$(w_id)
     RETURNING *;
     `;
-    return db.task(t => {
-        return t.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
-            if (p_id ===0 ) {
-                const err = new Error('Cannot found this fb user in database.');
-                err.status = 400;
-                throw err;
+
+    function source(index, data, delay) {
+        switch (index) {
+            case 0: {
+                return get_p_id.call(this, fb_id, {required: true});
             }
-            return t.one(check_workshop_author_sql, {p_id, w_id}).then(( {is_author} ) => {
-                if (is_author == "0") {
-                    const err = new Error('Cannot match user and workshop.');
-                    err.status = 400;
-                    throw err;
-                }
-                return t.one(sql, {w_id, image_url, start_datetime, end_datetime, location,
+            case 1: {
+                const p_id = data;
+                return check_workshop_author.call(this, w_id, p_id);
+            }
+            case 2: {
+                return this.one(sql, {w_id, image_url, start_datetime, end_datetime, location,
                     content, title, min_number, max_number, deadline, introduction, price});
-            });
-        });
-    });
+            }
+        }
+    }
+
+    return db
+        .tx(t => t.sequence(source, {track: true}))
+        .then(data => data.slice(-1)[0])
+        .catch(err => { throw err.error; });
 }
 
 module.exports = {
