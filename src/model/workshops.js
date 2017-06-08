@@ -36,7 +36,7 @@ function check_workshop_author(w_id, p_id) {
     `;
 
     return this
-        .one(check_workshop_author_sql, {p_id, w_id})
+        .one(sql, {p_id, w_id})
         .then(({is_author}) => {
             if (is_author == "0") {
                 const err = new Error('Cannot match user and workshop.');
@@ -384,23 +384,25 @@ function delete_(w_id, fb_id) {
     DELETE FROM workshops
     WHERE id=$(w_id)
     `;
-    return db.task(t => {
-        return t.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
-            if (p_id ===0 ) {
-                const err = new Error('Cannot found this fb user in database.');
-                err.status = 400;
-                throw err;
+
+    function source(index, data, delay) {
+        switch (index) {
+            case 0: {
+                return get_p_id.call(this, fb_id, {required: true});
             }
-            return t.one(check_workshop_author_sql, {p_id, w_id}).then(( {is_author} ) => {
-                if (is_author == "0") {
-                    const err = new Error('Cannot match user and workshop.');
-                    err.status = 400;
-                    throw err;
-                }
-                return t.none(sql, {w_id});
-            });
-        });
-    });
+            case 1: {
+                const p_id = data;
+                return check_workshop_author.call(this, w_id, p_id);
+            }
+            case 2: {
+                return this.none(sql, {w_id});
+            }
+        }
+    }
+
+    return db
+        .tx(t => t.sequence(source))
+        .catch(err => { throw err.error; });
 }
 
 function update(
