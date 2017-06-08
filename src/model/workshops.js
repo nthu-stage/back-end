@@ -279,30 +279,21 @@ function show(w_id, fb_id) {
 }
 
 function attend(w_id, fb_id) {
-    const stateSQL = `
-    SELECT workshops.state
-    FROM workshops
-    WHERE workshops.id = $(w_id)
+    var p_id;
+    const now=Date.now();
+
+    // none(w_id, p_id) -> void
+    const cancel_attend_sql = `
+    DELETE FROM attends WHERE profile_id=$(p_id) AND workshop_id=$(w_id);
     `;
 
-    const infoSQL =  `
-    SELECT w.pre_deadline
-    FROM workshops as w
-    WHERE w.id = $(w_id);
-    `;
-
-    const state_updateSQL = `
-    UPDATE workshops
-    SET state = $(state)
-    WHERE workshops.id = $(w_id);
-    `;
-
+    // none(w_id, p_id) -> void
     const toggle_attendSQL = `
     DO
     $do$
     BEGIN
     IF (SELECT COUNT(*) FROM attends WHERE profile_id=$(p_id) AND workshop_id=$(w_id)) > 0 THEN
-    DELETE FROM attends WHERE profile_id=$(p_id) AND workshop_id=$(w_id);
+    ${cancel_attend_sql}
     ELSE
     INSERT INTO attends VALUES ($(p_id), $(w_id));
     END IF;
@@ -310,34 +301,76 @@ function attend(w_id, fb_id) {
     $do$;
     `;
 
-    const attend_checkSQL = `
-    SELECT count(attends.profile_id) as attended
+    // one(w_id, p_id) -> {attended: Boolean}
+    const get_attended_sql = `
+    SELECT bool_or(attends.profile_id=$(p_id)) AS attended
     FROM attends
-    WHERE attends.profile_id = $(p_id) AND attends.workshop_id = $(w_id);
+    WHERE workshop_id = $(w_id)
     `;
 
-    return db.one(stateSQL, {w_id}).then(w => {
-        // TODO: judge state
-        // TODO: cannot attend more than max_number
-        if (w.state === 'judge_ac' || w.state === 'reached') {
-            return db.one(infoSQL, {w_id}).then(info => {
-                if ((+info.pre_deadline) < Date.now()) {
-                    db.none(state_updateSQL, {w_id, state: 'unreached'}).catch(err=>{
-                        throw err;
+    // one(w_id, p_id) -> see below
+    const get_workshop_sql = `
+    SELECT
+        min_number,
+        max_number,
+        state,
+        start_datetime,
+        end_datetime,
+        deadline,
+        pre_deadline,
+        COUNT(attends.profile_id) AS attendees_number,
+        bool_or(attends.profile_id=$(p_id)) AS attended
+    FROM workshops
+    LEFT JOIN attends
+    on attends.workshop_id=workshops.id
+    WHERE workshops.id=$(w_id)
+    GROUP BY workshops.id
+    `;
+
+    function source(index, data, delay) {
+        switch (index) {
+            case 0: {
+                return this.none(update_unreached_sql, {now});
+            }
+            // case 1: {
+            //     return get_p_id.call(this, fb_id, {required: true});
+            // }
+            case 1: {
+                // let p_id = data;
+                return this
+                    .one(get_workshop_sql, {w_id, p_id})
+                    .then(workshop => {
+                        attach_phase_on_workshop(workshop, now);
+                        prop_list = ["attendees_number", "start_datetime", "end_datetime",
+                            "deadline", "pre_deadline"];
+                        for (let prop of prop_list) {
+                            workshop[prop] = (+ workshop[prop]);
+                        }
+                        delete workshop.state;
+                        return workshop;
                     });
-                    return {attended: "0"};
-                } else {
-                    return get_p_id.call(db, fb_id, {required: true})
-                        .then(p_id => db
-                            .none(toggle_attendSQL, {p_id, w_id})
-                            .then(() => db.one(attend_checkSQL, {p_id, w_id}))
-                        );
+            }
+            case 2: {
+                let workshop = data;
+                if (workshop.phase == 'investigating' || workshop.phase == 'reached') {
+                    return this.none(toggle_attendSQL, {w_id, p_id}).then(() => null);
+                } else if (workshop.phase == 'full' && workshop.attended) {
+                    return this.none(cancel_attend_sql, {w_id, p_id}).then(() => null);
                 }
-            });
-        } else {
-            return {attended: "0"};
+                return null;
+            }
+            case 3: {
+                return this.one(get_attended_sql, {w_id, p_id});
+            }
         }
-    });
+    }
+
+    return get_p_id.call(db, fb_id)
+        .then(x => { p_id = x; })
+        .then(() => db.tx(t => t.sequence(source, {track: true})))
+        .then(data => {}data.slice(-1)[0])
+        .catch(err => { throw err.error; });
+
 }
 
 // attendees (dashboard)

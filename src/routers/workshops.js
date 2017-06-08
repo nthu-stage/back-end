@@ -127,10 +127,8 @@ router.post('/workshops/:w_id', function(req, res, next) {
 
     workshopsModel
         .attend(w_id, fb_id)
-        .then(attendState => {
-            attendState.attended = (attendState.attended === '0');
-            res.json(attendState);
-        }).catch(next);
+        .then(attendState => { res.json(attendState); })
+        .catch(next);
 });
 
 // delete
