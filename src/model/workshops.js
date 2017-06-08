@@ -200,6 +200,7 @@ function propose(
 }
 
 function show(w_id, fb_id) {
+    var p_id;
 
     // one(w_id) -> {workshop_id, name}
     const get_proposer_sql = `
@@ -256,13 +257,9 @@ function show(w_id, fb_id) {
                 return this.none(update_unreached_sql, {now});
             }
             case 1: {
-                return get_p_id.call(this, fb_id);
-            }
-            case 2: {
-                const p_id = data;
                 return this.one(get_workshop_sql, {w_id, p_id});
             }
-            case 3: {
+            case 2: {
                 let workshop = data;
                 attach_phase_on_workshop(workshop, now);
                 workshop.attendees_number = (+ workshop.attendees_number);
@@ -272,8 +269,9 @@ function show(w_id, fb_id) {
         }
     }
 
-    return db
-        .tx(t => t.sequence(source, {track: true}))
+    return get_p_id.call(db, fb_id)
+        .then(x => { p_id = x; })
+        .then(() => db.tx(t => t.sequence(source, {track: true})))
         .then(data => data.slice(-1)[0])
         .catch(err => { throw err.error; });
 }
@@ -365,16 +363,17 @@ function attend(w_id, fb_id) {
         }
     }
 
-    return get_p_id.call(db, fb_id)
+    return get_p_id.call(db, fb_id, {required: true})
         .then(x => { p_id = x; })
         .then(() => db.tx(t => t.sequence(source, {track: true})))
-        .then(data => {}data.slice(-1)[0])
+        .then(data => data.slice(-1)[0])
         .catch(err => { throw err.error; });
-
 }
 
 // attendees (dashboard)
 function attendees(w_id, fb_id) {
+    var p_id;
+
     // any(w_id)
     const sql = `
     SELECT name, email
@@ -388,25 +387,24 @@ function attendees(w_id, fb_id) {
         const now=Date.now();
         switch (index) {
             case 0: {
-                return get_p_id.call(this, fb_id, {required: true});
-            }
-            case 1: {
                 const p_id = data;
                 return check_workshop_author.call(this, w_id, p_id);
             }
-            case 2: {
+            case 1: {
                 return this.any(sql, {w_id});
             }
         }
     }
 
-    return db
-        .tx(t => t.sequence(source, {track: true}))
+    return get_p_id.call(db, fb_id, {required: true})
+        .then(x => { p_id = x; })
+        .then(() => db.tx(t => t.sequence(source, {track: true})))
         .then(data => data.slice(-1)[0])
         .catch(err => { throw err.error; });
 }
 
 function delete_(w_id, fb_id) {
+    var p_id;
     const sql = `
     DELETE FROM workshops
     WHERE id=$(w_id)
@@ -415,20 +413,18 @@ function delete_(w_id, fb_id) {
     function source(index, data, delay) {
         switch (index) {
             case 0: {
-                return get_p_id.call(this, fb_id, {required: true});
-            }
-            case 1: {
                 const p_id = data;
                 return check_workshop_author.call(this, w_id, p_id);
             }
-            case 2: {
+            case 1: {
                 return this.none(sql, {w_id});
             }
         }
     }
 
-    return db
-        .tx(t => t.sequence(source))
+    return get_p_id.call(db, fb_id, {required: true})
+        .then(x => { p_id = x; })
+        .then(() => db.tx(t => t.sequence(source)))
         .catch(err => { throw err.error; });
 }
 
@@ -447,6 +443,8 @@ function update(
     introduction,
     price
 ){
+    var p_id;
+
     const sql = `
     UPDATE workshops
     SET
@@ -468,22 +466,19 @@ function update(
     function source(index, data, delay) {
         switch (index) {
             case 0: {
-                return get_p_id.call(this, fb_id, {required: true});
-            }
-            case 1: {
                 const p_id = data;
                 return check_workshop_author.call(this, w_id, p_id);
             }
-            case 2: {
+            case 1: {
                 return this.one(sql, {w_id, image_url, start_datetime, end_datetime, location,
                     content, title, min_number, max_number, deadline, introduction, price});
             }
         }
     }
 
-    return db
-        .tx(t => t.sequence(source, {track: true}))
-        .then(data => data.slice(-1)[0])
+    return get_p_id.call(db, fb_id, {required: true})
+        .then(x => { p_id = x; })
+        .then(() => db.tx(t => t.sequence(source)))
         .catch(err => { throw err.error; });
 }
 
