@@ -71,6 +71,21 @@ function attach_phase_on_workshop(workshop, now) {
     }
 }
 
+function adapter(workshop) {
+    var prop_list = ["start_datetime", "end_datetime", "deadline", "pre_deadline",
+        "created_at", "updated_at", "attendees_number"];
+    for (let prop of prop_list) {
+        if (workshop.hasOwnProperty(prop)) {
+            workshop[prop] = (+ workshop[prop]);
+        }
+    }
+
+    if (workshop.hasOwnProperty("attended") && workshop.attended === null) {
+        workshop.attended = false;
+    }
+    return workshop;
+}
+
 function list(searchText, stateFilter) {
     const now = Date.now();
 
@@ -134,6 +149,7 @@ function list(searchText, stateFilter) {
     return db
         .tx(t => t.sequence(source, {track: true}))
         .then(data => data.slice(-1)[0])
+        .then(ws => ws.map(adapter))
         .catch(err => { throw err.error; });
 }
 
@@ -262,7 +278,6 @@ function show(w_id, fb_id) {
             case 2: {
                 let workshop = data;
                 attach_phase_on_workshop(workshop, now);
-                workshop.attendees_number = (+ workshop.attendees_number);
                 delete workshop.state;
                 return workshop;
             }
@@ -273,6 +288,7 @@ function show(w_id, fb_id) {
         .then(x => { p_id = x; })
         .then(() => db.tx(t => t.sequence(source, {track: true})))
         .then(data => data.slice(-1)[0])
+        .then(w => adapter(w))
         .catch(err => { throw err.error; });
 }
 
@@ -466,7 +482,6 @@ function update(
     function source(index, data, delay) {
         switch (index) {
             case 0: {
-                const p_id = data;
                 return check_workshop_author.call(this, w_id, p_id);
             }
             case 1: {
@@ -478,7 +493,9 @@ function update(
 
     return get_p_id.call(db, fb_id, {required: true})
         .then(x => { p_id = x; })
-        .then(() => db.tx(t => t.sequence(source)))
+        .then(() => db.tx(t => t.sequence(source, {track: true})))
+        .then(data => data.slice(-1)[0])
+        .then(w => adapter(w))
         .catch(err => { throw err.error; });
 }
 

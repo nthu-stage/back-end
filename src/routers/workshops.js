@@ -16,13 +16,8 @@ router.get('/workshops', function(req, res, next) {
 
     workshopsModel
         .list(searchText, stateFilter)
-        .then(workshops => {
-            for (let w of workshops) {
-                fn.tsWrapper(w, 'deadline');
-                fn.tsWrapper(w, 'pre_deadline');
-            }
-            res.json(workshops);
-        }).catch(next);
+        .then(workshops => { res.json(workshops); })
+        .catch(next);
 });
 
 // show
@@ -40,14 +35,8 @@ router.get('/workshops/:w_id', function(req, res, next) {
 
     workshopsModel
         .show(w_id, fb_id)
-        .then(workshop => {
-            fn.tsWrapper(workshop, 'start_datetime');
-            fn.tsWrapper(workshop, 'end_datetime');
-            fn.tsWrapper(workshop, 'deadline');
-            fn.tsWrapper(workshop, 'pre_deadline');
-            if (workshop.attended === null) workshop.attended = false;
-            res.json(workshop);
-        }).catch(next);
+        .then(workshop => { res.json(workshop); })
+        .catch(next);
 });
 
 
@@ -216,13 +205,8 @@ router.put('/workshops/:w_id', function(req, res, next) {
             deadline,
             introduction,
             price
-        ).then(workshop => {
-            fn.tsWrapper(workshop, 'start_datetime');
-            fn.tsWrapper(workshop, 'end_datetime');
-            fn.tsWrapper(workshop, 'deadline');
-            fn.tsWrapper(workshop, 'pre_deadline');
-            res.json(workshop);
-        }).catch(next);
+        ).then(workshop => { res.json(workshop); })
+        .catch(next);
 });
 
 module.exports = router;
