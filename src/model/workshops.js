@@ -278,7 +278,6 @@ function show(w_id, fb_id) {
         .catch(err => { throw err.error; });
 }
 
-// Attend
 function attend(w_id, fb_id) {
     const stateSQL = `
     SELECT workshops.state
@@ -328,16 +327,11 @@ function attend(w_id, fb_id) {
                     });
                     return {attended: "0"};
                 } else {
-                    return db.any(get_p_id_from_fb_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
-                        if (p_id ===0 ) {
-                            const err = new Error('Cannot found this fb user in database.');
-                            err.status = 400;
-                            throw err;
-                        }
-                        return db.none(toggle_attendSQL, {p_id, w_id}).then(() => {
-                            return db.one(attend_checkSQL, {p_id, w_id});
-                        });
-                    });
+                    return get_p_id.call(db, fb_id, {required: true})
+                        .then(p_id => db
+                            .none(toggle_attendSQL, {p_id, w_id})
+                            .then(() => db.one(attend_checkSQL, {p_id, w_id}))
+                        );
                 }
             });
         } else {
