@@ -11,11 +11,12 @@ const check_author_sql = `
 SELECT COUNT(*) AS is_author FROM come_up_withs WHERE profile_id=$(p_id) AND idea_id=$(i_id)
 `;
 
-function list(searchText, order, fb_id=null) {
+function list(searchText, order, fb_id=null, start) {
     // [TODO]: search priority skill > goal.
     const search = ['skill', 'goal'].map(s => {
         return `${s} ILIKE '%$2:value%'`;
     });
+
     // $1 = p_id
     const user_likes_sql = `SELECT * FROM likes WHERE likes.profile_id = $1 `;
     const liked_sql = `
@@ -30,7 +31,7 @@ function list(searchText, order, fb_id=null) {
     `;
     const like_number_sql = `
     SELECT
-    ideas.id AS id, COUNt(likes.profile_id) AS like_number
+    ideas.id AS id, COUNT(likes.profile_id) AS like_number
     FROM ideas
     LEFT JOIN likes
     ON likes.idea_id = ideas.id
@@ -51,11 +52,12 @@ function list(searchText, order, fb_id=null) {
     ON ln.id = i.id
     ${searchText ? 'WHERE ' + search.join(' OR ') : ''}
     ORDER BY ${order=='hot' ? 'like_number DESC' : 'created_at DESC'}
+    LIMIT 8 OFFSET ($3)
     `;
 
     return db.task(t => {
         return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
-            return t.any(sql, [p_id, searchText]);
+            return t.any(sql, [p_id, searchText, start]);
         });
     });
 }
