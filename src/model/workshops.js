@@ -86,13 +86,16 @@ function adapter(workshop) {
     return workshop;
 }
 
-function list(searchText, stateFilter) {
+function list(searchText, stateFilter, start) {
     const now = Date.now();
 
     var where = [];
     if (searchText) {
         // [TODO]:  temporarialy only search title.
         where.push(`w.title ILIKE '%$(searchText:value)%'`);
+    }
+    if (start) {
+        where.push(`$<start> < deadline`); 
     }
 
     // any(searchText, stateFilter) -> [{attendees_number, ...workshop}]
@@ -116,6 +119,7 @@ function list(searchText, stateFilter) {
     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
     GROUP BY w.id
     ORDER BY w.deadline ASC
+    LIMIT 8
     `;
     function state_filter_predicate(workshop) {
         switch (stateFilter) {
@@ -134,7 +138,7 @@ function list(searchText, stateFilter) {
                 return this.none(update_unreached_sql, {now});
             }
             case 1: {
-                return this.any(get_workshop_list_sql, {searchText, stateFilter});
+                return this.any(get_workshop_list_sql, {searchText, stateFilter, start});
             }
             case 2: {
                 let workshops = data;
