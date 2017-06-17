@@ -104,29 +104,6 @@ function list(searchText, stateFilter, start) {
         where.push(`rownum > $<start>`);
     }
 
-    // any(searchText, stateFilter) -> [{attendees_number, ...workshop}]
-    // const get_workshop_list_sql = `
-    // SELECT w.id AS w_id,
-    //     w.image_url,
-    //     w.title,
-    //     w.min_number,
-    //     w.max_number,
-    //     w.deadline,
-    //     w.pre_deadline,
-    //     w.introduction,
-    //     w.price,
-    //     COUNT(a.profile_id) AS attendees_number,
-    //     w.start_datetime,
-    //     w.end_datetime,
-    //     w.state
-    // FROM workshops AS w
-    // LEFT JOIN attends AS a
-    // ON w.id = a.workshop_id
-    // ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-    // GROUP BY w.id
-    // ORDER BY w.deadline ASC
-    // LIMIT 8
-    // `;
     const get_workshop_list_sql = `
     SELECT
         w.id AS w_id,
@@ -141,8 +118,7 @@ function list(searchText, stateFilter, start) {
         COUNT(a.profile_id) AS attendees_number,
         w.start_datetime,
         w.end_datetime,
-        w.state,
-        rownum
+        w.state
     FROM (
         SELECT ROW_NUMBER() OVER ( ORDER BY workshops.deadline ASC ) AS rownum, *
         FROM workshops
@@ -163,7 +139,7 @@ function list(searchText, stateFilter, start) {
       w.start_datetime,
       w.end_datetime,
       w.state,
-      rownum
+      w.rownum
     ORDER BY rownum ASC
     LIMIT 8
     `;

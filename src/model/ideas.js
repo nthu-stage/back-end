@@ -13,12 +13,26 @@ SELECT COUNT(*) AS is_author FROM come_up_withs WHERE profile_id=$(p_id) AND ide
 
 function list(searchText, order, fb_id=null, start) {
     // [TODO]: search priority skill > goal.
+    const where = [];
     const search = ['skill', 'goal'].map(s => {
         return `${s} ILIKE '%$2:value%'`;
     });
+    if (searchText)
+        where.push(search.join(' OR '));
+    if (start) {
+        if (order === 'hot')
+            where.push(`$3 < like_rownum`);
+        else
+            where.push(`$3 < created_rownum`);
+    }
 
     // $1 = p_id
     const user_likes_sql = `SELECT * FROM likes WHERE likes.profile_id = $1 `;
+    const created_at_sql = `
+        SELECT
+        ROW_NUMBER() OVER ( ORDER BY created_at DESC ) AS created_rownum, *
+        FROM ideas
+    `
     const liked_sql = `
     SELECT
     ideas.id AS id, COUNT(user_likes.profile_id) AS liked
@@ -31,7 +45,8 @@ function list(searchText, order, fb_id=null, start) {
     `;
     const like_number_sql = `
     SELECT
-    ideas.id AS id, COUNT(likes.profile_id) AS like_number
+    ideas.id AS id, COUNT(likes.profile_id) AS like_number,
+    ROW_NUMBER() OVER ( ORDER BY COUNT(likes.profile_id) DESC ) AS like_rownum
     FROM ideas
     LEFT JOIN likes
     ON likes.idea_id = ideas.id
@@ -41,7 +56,9 @@ function list(searchText, order, fb_id=null, start) {
     const sql = `
     SELECT
     i.id AS i_id, idea_type, skill, goal, like_number, liked
-    FROM ideas as i
+    FROM (
+        ${created_at_sql}
+    ) AS i
     LEFT JOIN (
         ${liked_sql}
     ) AS liked
@@ -50,9 +67,9 @@ function list(searchText, order, fb_id=null, start) {
         ${like_number_sql}
     ) AS ln
     ON ln.id = i.id
-    ${searchText ? 'WHERE ' + search.join(' OR ') : ''}
-    ORDER BY ${order=='hot' ? 'like_number DESC' : 'created_at DESC'}
-    LIMIT 8 OFFSET ($3)
+    ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+    ORDER BY ${order=='hot' ? 'like_rownum ASC' : 'created_rownum ASC'}
+    LIMIT 8
     `;
 
     return db.task(t => {
