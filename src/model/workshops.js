@@ -101,12 +101,12 @@ function list(searchText, stateFilter, start) {
         where.push(`w.title ILIKE '%$(searchText:value)%'`);
     }
     if (start) {
-        where.push(`$<start> < deadline`);
+        where.push(`rownum > $<start>`);
     }
 
-    // any(searchText, stateFilter) -> [{attendees_number, ...workshop}]
     const get_workshop_list_sql = `
-    SELECT w.id AS w_id,
+    SELECT
+        w.id AS w_id,
         w.image_url,
         w.title,
         w.min_number,
@@ -119,12 +119,28 @@ function list(searchText, stateFilter, start) {
         w.start_datetime,
         w.end_datetime,
         w.state
-    FROM workshops AS w
+    FROM (
+        SELECT ROW_NUMBER() OVER ( ORDER BY workshops.deadline ASC ) AS rownum, *
+        FROM workshops
+    ) AS w
     LEFT JOIN attends AS a
     ON w.id = a.workshop_id
     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-    GROUP BY w.id
-    ORDER BY w.deadline ASC
+    GROUP BY
+      w.id,
+      w.image_url,
+      w.title,
+      w.min_number,
+      w.max_number,
+      w.deadline,
+      w.pre_deadline,
+      w.introduction,
+      w.price,
+      w.start_datetime,
+      w.end_datetime,
+      w.state,
+      w.rownum
+    ORDER BY rownum ASC
     LIMIT 8
     `;
     function state_filter_predicate(workshop) {
