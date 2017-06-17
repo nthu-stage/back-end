@@ -164,7 +164,7 @@ function list(searchText, stateFilter, start) {
       w.end_datetime,
       w.state,
       rownum
-    ORDER BY w.deadline ASC
+    ORDER BY rownum ASC
     LIMIT 8
     `;
     function state_filter_predicate(workshop) {
