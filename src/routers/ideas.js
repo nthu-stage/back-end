@@ -52,13 +52,13 @@ router.get('/ideas/:i_id', function(req, res, next) {
 
 // list
 router.get('/ideas', function(req, res, next) {
-	const {searchText, order, start} = req.query;
+	const {searchText, order, offset, limit} = req.query;
 	var fb_id = req.get('userID');
 	if (fb_id === undefined) {
 		fb_id = null;
 	}
 
-	ideasModel.list(searchText, order, fb_id, start).then((ideas=[]) => {
+	ideasModel.list(searchText, order, fb_id, offset, limit).then((ideas=[]) => {
 		for (let idea of ideas) {
 			idea.liked = (idea.liked=="1");
 			idea.like_number = (+ idea.like_number);

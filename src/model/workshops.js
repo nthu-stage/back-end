@@ -92,7 +92,7 @@ function adapter(workshop) {
 //  API below  //
 /////////////////
 
-function list(searchText, stateFilter, start) {
+function list(searchText, stateFilter, offset, limit) {
     const now = Date.now();
 
     var where = [];
@@ -100,8 +100,8 @@ function list(searchText, stateFilter, start) {
         // [TODO]:  temporarialy only search title.
         where.push(`w.title ILIKE '%$(searchText:value)%'`);
     }
-    if (start) {
-        where.push(`rownum > $<start>`);
+    if (offset) {
+        where.push(`rownum > $<offset>`);
     }
 
     const get_workshop_list_sql = `
@@ -141,7 +141,7 @@ function list(searchText, stateFilter, start) {
       w.state,
       w.rownum
     ORDER BY rownum ASC
-    LIMIT 8
+    LIMIT $<limit>
     `;
     function state_filter_predicate(workshop) {
         switch (stateFilter) {
@@ -160,7 +160,7 @@ function list(searchText, stateFilter, start) {
                 return this.none(update_unreached_sql, {now});
             }
             case 1: {
-                return this.any(get_workshop_list_sql, {searchText, stateFilter, start});
+                return this.any(get_workshop_list_sql, {searchText, stateFilter, offset, limit});
             }
             case 2: {
                 let workshops = data;
