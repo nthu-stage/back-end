@@ -408,7 +408,6 @@ function attendees(w_id, fb_id) {
         const now=Date.now();
         switch (index) {
             case 0: {
-                const p_id = data;
                 return check_workshop_author.call(this, w_id, p_id);
             }
             case 1: {
