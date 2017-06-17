@@ -72,6 +72,7 @@ function attach_phase_on_workshop(workshop, now) {
 }
 
 function adapter(workshop) {
+    // type cast timestamp field to int
     var prop_list = ["start_datetime", "end_datetime", "deadline", "pre_deadline",
         "created_at", "updated_at", "attendees_number"];
     for (let prop of prop_list) {
@@ -86,6 +87,11 @@ function adapter(workshop) {
     return workshop;
 }
 
+
+/////////////////
+//  API below  //
+/////////////////
+
 function list(searchText, stateFilter, start) {
     const now = Date.now();
 
@@ -95,7 +101,7 @@ function list(searchText, stateFilter, start) {
         where.push(`w.title ILIKE '%$(searchText:value)%'`);
     }
     if (start) {
-        where.push(`$<start> < deadline`); 
+        where.push(`$<start> < deadline`);
     }
 
     // any(searchText, stateFilter) -> [{attendees_number, ...workshop}]
@@ -407,7 +413,6 @@ function attendees(w_id, fb_id) {
         const now=Date.now();
         switch (index) {
             case 0: {
-                const p_id = data;
                 return check_workshop_author.call(this, w_id, p_id);
             }
             case 1: {
@@ -433,7 +438,6 @@ function delete_(w_id, fb_id) {
     function source(index, data, delay) {
         switch (index) {
             case 0: {
-                const p_id = data;
                 return check_workshop_author.call(this, w_id, p_id);
             }
             case 1: {
