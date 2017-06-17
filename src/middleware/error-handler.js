@@ -10,20 +10,23 @@ module.exports = function(err, req, res, next) {
     });
 
     const status = err.status || 500;
-    const status_code = (status==200) ? 'OK'
-					  : (status==400) ? 'Bad Request'
-					  : (status==401) ? 'Unauthorized'
-					  : /* default */   'Internal Server Error';
+    var status_code;
+    switch (status) {
+        case 200: status_code = 'OK'; break;
+        case 400: status_code = 'Bad Request'; break;
+        case 401: status_code = 'Unauthorized'; break;
+        default:  status_code = 'Internal Server Error';
+    }
     var msg = [
-	    status_code,
-		err,
-		JSON.stringify(err),
-		Error().stack
-	];
-	console.log(msg.join('\n'));
+        status_code,
+        err,
+        JSON.stringify(err),
+        Error().stack
+    ];
+    console.log(msg.join('\n'));
 
     // TODO: remove this when production, security reason
-	res.status(status).send(msg.join('\n'));
+    res.status(status).send(msg.join('\n'));
 
     // res.sendStatus(err.status ? err.status : 500);
     // next(err);

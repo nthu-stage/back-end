@@ -53,7 +53,6 @@ router.get('/ideas/:i_id', function(req, res, next) {
 // list
 router.get('/ideas', function(req, res, next) {
 	const {searchText, order} = req.query;
-	// console.log(JSON.stringify(req.query));
 	var fb_id = req.get('userID');
 	if (fb_id === undefined) {
 		fb_id = null;

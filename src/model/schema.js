@@ -5,20 +5,16 @@ const db = pgp(process.env.DB_URL);
 const day_ms=24*3600*1000;
 
 const drop_schema_sql = `
--- Drop
 DROP TABLE IF EXISTS come_up_withs;
 DROP TABLE IF EXISTS likes;
 DROP TABLE IF EXISTS proposes;
 DROP TABLE IF EXISTS attends;
--- Drop
 DROP INDEX IF EXISTS profiles_idx_created_at;
 DROP INDEX IF EXISTS profiles_idx_updated_at;
--- Drop
 DROP TABLE IF EXISTS profiles;
 DROP TABLE IF EXISTS workshops;
-DROP TYPE IF EXISTS state;
-DROP TYPE IF EXISTS authority;
--- Drop
+DROP TYPE  IF EXISTS state;
+DROP TYPE  IF EXISTS authority;
 DROP INDEX IF EXISTS ideas_idx_created_at;
 DROP INDEX IF EXISTS ideas_idx_updated_at;
 DROP INDEX IF EXISTS ideas_idx_skill;
@@ -40,20 +36,19 @@ CREATE TYPE state AS ENUM (
     'judge_na',
     'judge_ac',
     'reached',
-    'unreached',
-    'over'
+    'unreached'
 );
 CREATE TABLE profiles (
     id                  serial PRIMARY KEY NOT NULL,
-    name                text NOT NULL,
-    email               text NOT NULL,
-    fb_userid           text NOT NULL,
-    picture_url         text NOT NULL,
-    authority           authority NOT NULL,
-    available_time      text NOT NULL,
-    last_login_datetime bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    created_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    updated_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000)
+    name                text      NOT NULL DEFAULT '',
+    email               text      NOT NULL DEFAULT '',
+    fb_userid           text      NOT NULL DEFAULT '',
+    picture_url         text      NOT NULL DEFAULT '',
+    available_time      text      NOT NULL DEFAULT '',
+    authority           authority NOT NULL DEFAULT 'user',
+    last_login_datetime bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
+    created_at          bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at          bigint    NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
 CREATE INDEX profiles_idx_created_at ON profiles USING btree(created_at);
 CREATE INDEX profiles_idx_updated_at ON profiles USING btree(updated_at);
@@ -62,22 +57,22 @@ CREATE INDEX profiles_idx_updated_at ON profiles USING btree(updated_at);
 const schemaWorkshopSql = `
 -- [workshops]
 CREATE TABLE workshops (
-    id                  serial PRIMARY KEY NOT NULL,
-    image_url           text,
-    title               text NOT NULL,
-    start_datetime      bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    end_datetime        bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    min_number          integer NOT NULL DEFAULT 0,
-    max_number          integer NOT NULL DEFAULT 0,
-    deadline            bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    pre_deadline        bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    location            text NOT NULL,
-    introduction        text NOT NULL DEFAULT '',
-    content             text NOT NULL DEFAULT '',
-    state               state NOT NULL,
-    price               integer NOT NULL DEFAULT 0,
-    created_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    updated_at          bigint NOT NULL DEFAULT (extract(epoch from now())*1000)
+    id             serial PRIMARY KEY NOT NULL,
+    image_url      text    NOT NULL DEFAULT '',
+    title          text    NOT NULL DEFAULT '',
+    location       text    NOT NULL DEFAULT '',
+    introduction   text    NOT NULL DEFAULT '',
+    content        text    NOT NULL DEFAULT '',
+    min_number     integer NOT NULL DEFAULT 0,
+    max_number     integer NOT NULL DEFAULT 0,
+    price          integer NOT NULL DEFAULT 0,
+    state          state   NOT NULL DEFAULT 'judging',
+    start_datetime bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    end_datetime   bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    deadline       bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    pre_deadline   bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    created_at     bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at     bigint  NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
 `;
 
@@ -91,12 +86,12 @@ CREATE TYPE idea_type AS ENUM (
 CREATE TABLE ideas (
     id         serial PRIMARY KEY NOT NULL,
     idea_type  idea_type NOT NULL,
-    skill      text NOT NULL,
-    goal       text NOT NULL,
-    web_url    text,
-    image_url  text,
-    created_at bigint NOT NULL DEFAULT (extract(epoch from now())*1000),
-    updated_at bigint NOT NULL DEFAULT (extract(epoch from now())*1000)
+    skill      text      NOT NULL DEFAULT '',
+    goal       text      NOT NULL DEFAULT '',
+    web_url    text      NOT NULL DEFAULT '',
+    image_url  text      NOT NULL DEFAULT '',
+    created_at bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at bigint    NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
 CREATE INDEX ideas_idx_created_at ON ideas USING btree(created_at);
 CREATE INDEX ideas_idx_updated_at ON ideas USING btree(updated_at);
@@ -111,20 +106,20 @@ const schemaForeignSql = `
 -- that are referenced to the rows that are being deleted in the origin table
 -- Create
 CREATE TABLE come_up_withs (
-    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
-    idea_id             serial REFERENCES ideas(id) ON DELETE CASCADE
+    profile_id serial REFERENCES profiles(id) ON DELETE CASCADE,
+    idea_id    serial REFERENCES ideas(id)    ON DELETE CASCADE
 );
 CREATE TABLE likes (
-    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
-    idea_id             serial REFERENCES ideas(id) ON DELETE CASCADE
+    profile_id serial REFERENCES profiles(id) ON DELETE CASCADE,
+    idea_id    serial REFERENCES ideas(id)    ON DELETE CASCADE
 );
 CREATE TABLE proposes (
-    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
-    workshop_id         serial REFERENCES workshops(id) ON DELETE CASCADE
+    profile_id  serial REFERENCES profiles(id)  ON DELETE CASCADE,
+    workshop_id serial REFERENCES workshops(id) ON DELETE CASCADE
 );
 CREATE TABLE attends (
-    profile_id          serial REFERENCES profiles(id) ON DELETE CASCADE,
-    workshop_id         serial REFERENCES workshops(id) ON DELETE CASCADE
+    profile_id  serial REFERENCES profiles(id)  ON DELETE CASCADE,
+    workshop_id serial REFERENCES workshops(id) ON DELETE CASCADE
 );
 `;
 
@@ -148,75 +143,75 @@ function genRandomAvaiTime() {
 
 function genDummyProfiles() {
     const n = 7;
-    const names = ['Apple', 'Bike', 'Car', 'Dog', 'Ear', 'Race', 'Rust'];
-    const fb_suerids = ['1514864711922034', '1833867746937550', '1234', '9527', '1036', '9487', '9062']
-    var sql = new String();
+    const names      = ['Apple',            'Bike',             'Car',  'Dog',  'Ear',  'Race', 'Rust'];
+    const fb_suerids = ['1514864711922034', '1833867746937550', '1234', '9527', '1036', '9487', '9062'];
+    var sql = '';
     for (let i=0; i<n; i++) {
-       sql += `
-INSERT INTO profiles(
-    name,
-    email,
-    fb_userid,
-    picture_url,
-    authority,
-    available_time,
-    -- last_login_datetime,
-    created_at,
-    updated_at
-)
-VALUES(
-    '${names[i]}',
-    '${names[i]}@domain.com',
-    '${fb_suerids[i]}',
-    '${names[i]}_photo_url',
-    'user',
-    '${genRandomAvaiTime()}',
-    -- ${Date.now() - (n-i) * day_ms},
-    ${Date.now() - (n-i) * day_ms},
-    ${Date.now() - (n-i) * day_ms}
-);
-    `;
+        sql += `
+        INSERT INTO profiles(
+            name,
+            email,
+            fb_userid,
+            picture_url,
+            authority,
+            available_time,
+            -- last_login_datetime,
+            created_at,
+            updated_at
+        )
+        VALUES(
+            '${names[i]}',
+            '${names[i]}@domain.com',
+            '${fb_suerids[i]}',
+            '${names[i]}_photo_url',
+            'user',
+            '${genRandomAvaiTime()}',
+            -- ${Date.now() - (n-i) * day_ms},
+            ${Date.now() - (n-i) * day_ms},
+            ${Date.now() - (n-i) * day_ms}
+        );
+        `;
     }
     return sql;
 }
 
 function genDummyWorkshops() {
-    const n = 6;
-    const titles=['React', 'Git', 'Archi', 'Linux', 'Stage', 'Antergos'];
-    const locations=['London','Tokyo','Rome','Taipei','Hsinchu','Paris'];
-    const phases=[ 'judging', 'judge_na', 'judge_ac', 'reached', 'unreached', 'over'];
-    var sql = new String();
+    const n = 5;
+    const titles    = ['React',   'Git',      'Archi',    'Linux',   'Stage'];
+    const locations = ['London',  'Tokyo',    'Rome',     'Taipei',  'Hsinchu'];
+    const phases    = ['judging', 'judge_na', 'judge_ac', 'reached', 'unreached'];
+    var sql = '';
     for (let i=0; i<n; i++) {
-       sql += `
-INSERT INTO workshops(
-    title,
-    start_datetime,
-    end_datetime,
-    min_number,
-    max_number,
-    deadline,
-    pre_deadline,
-    location,
-    state,
-    price,
-    created_at,
-    updated_at
-)
-VALUES(
-    '${titles[i]}',
-    ${Date.now() + (n-i)*day_ms + 17*day_ms},
-    ${Date.now() + (n-i)*day_ms + 34*day_ms},
-    ${Math.floor(Math.random() * 10)},
-    ${Math.floor(Math.random() * 30)+10},
-    ${Date.now() + (n-i)*day_ms + 10*day_ms},
-    ${Date.now() + (n-i)*day_ms + 15*day_ms},
-    '${locations[i]}',
-    '${phases[i]}',
-    ${Math.random() * 100},
-    ${Date.now()},
-    ${Date.now()}
-);
-    `;
+        sql += `
+        INSERT INTO workshops(
+            title,
+            start_datetime,
+            end_datetime,
+            min_number,
+            max_number,
+            deadline,
+            pre_deadline,
+            location,
+            state,
+            price,
+            created_at,
+            updated_at
+        )
+        VALUES(
+            '${titles[i]}',
+            ${Date.now() + (n-i)*day_ms + 17*day_ms},
+            ${Date.now() + (n-i)*day_ms + 34*day_ms},
+            ${Math.floor(Math.random() * 10)},
+            ${Math.floor(Math.random() * 30)+10},
+            ${Date.now() + (n-i)*day_ms + 10*day_ms},
+            ${Date.now() + (n-i)*day_ms + 15*day_ms},
+            '${locations[i]}',
+            '${phases[i]}',
+            ${Math.random() * 100},
+            ${Date.now()},
+            ${Date.now()}
+        );
+        `;
     }
     return sql;
 }
@@ -225,43 +220,43 @@ VALUES(
 function genDummyIdeas() {
     const n = 8;
     const idea_types = ['learn', 'teach'];
-    const skills=['Fire', 'Desire', 'Gun', 'Radio', 'Piano', 'Skin', 'Spot', 'Silence'];
-    const goals=['Burn', 'Death', 'Shoot', 'Sound', 'Melody', 'Touch', 'View', 'Noise'];
-    var sql = new String();
+    const skills=['Fire', 'Desire', 'Gun',   'Radio', 'Piano',  'Skin',  'Spot', 'Silence'];
+    const goals=['Burn',  'Death',  'Shoot', 'Sound', 'Melody', 'Touch', 'View', 'Noise'];
+    var sql = '';
     for (let i=0; i<n; i++) {
-       sql += `
-INSERT INTO ideas(
-    idea_type,
-    skill,
-    goal,
-    web_url,
-    image_url,
-    created_at,
-    updated_at
-)
-VALUES(
-    '${idea_types[Math.floor(Math.random()*2)]}',
-    '${skills[i]}',
-    '${goals[i]}',
-    'some_web_url',
-    'some_image_url',
-    ${Date.now() - (n-i)*day_ms},
-    ${Date.now() - (n-i)*day_ms}
-);
-    `;
+        sql += `
+        INSERT INTO ideas(
+            idea_type,
+            skill,
+            goal,
+            web_url,
+            image_url,
+            created_at,
+            updated_at
+        )
+        VALUES(
+            '${idea_types[Math.floor(Math.random()*2)]}',
+            '${skills[i]}',
+            '${goals[i]}',
+            'some_web_url',
+            'some_image_url',
+            ${Date.now() - (n-i)*day_ms},
+            ${Date.now() - (n-i)*day_ms}
+        );
+        `;
     }
     return sql;
 }
 
 function genProposeTable() {
     // all workshop need to be created by someone
-    var sql = new String();
+    var sql = '';
     const ps = [5, 1, 2, 6, 4];
     for (let i=0; i<5; i++) {
         sql+=`
         INSERT INTO proposes VALUES(
-        ${ps[i]},   -- profile_id
-        ${i+1}      -- workshop_id
+            ${ps[i]},   -- profile_id
+            ${i+1}      -- workshop_id
         );
         `;
     }
@@ -270,7 +265,7 @@ function genProposeTable() {
 
 function genAttendTable() {
     // one profile could attends multiple workshop
-    var sql = new String();
+    var sql = '';
     // profile 2 attends nothing
     // noeone want to attends workshop 3
     const ary = [
@@ -283,8 +278,8 @@ function genAttendTable() {
     for (let [p, w] of ary) {
         sql+=`
         INSERT INTO attends VALUES(
-        ${p},
-        ${w}
+            ${p},
+            ${w}
         );
         `;
     }
@@ -293,7 +288,7 @@ function genAttendTable() {
 
 function genLikeTable() {
     // one profile could attends multiple workshop
-    var sql = new String();
+    var sql = '';
     // profile 5 dont likes anyone
     // noone likes idea 7
     const ary = [
@@ -307,8 +302,8 @@ function genLikeTable() {
     for (let [p, i] of ary) {
         sql+=`
         INSERT INTO likes VALUES(
-        ${p},
-        ${i}
+            ${p},
+            ${i}
         );
         `;
     }
@@ -317,12 +312,12 @@ function genLikeTable() {
 
 function genComeUpWithTable() {
     // all idea need to be created by someone
-    var sql = new String();
+    var sql = '';
     for (let i=0; i<8; i++) {
         sql+=`
         INSERT INTO come_up_withs VALUES(
-        ${Math.floor(Math.random()*7)+1},
-        ${i+1}
+            ${Math.floor(Math.random()*7)+1},
+            ${i+1}
         );
         `;
     }
@@ -339,16 +334,18 @@ ${genLikeTable()}
 ${genComeUpWithTable()}
 `;
 
-db.none(schemaSql).then(() => {
-    console.log('Schema created');
-    db.none(dataSql).then(() => {
-        console.log('Data populated');
-        pgp.end();
+db.none(schemaSql)
+    .then(() => {
+        console.log('Schema created');
+        db.none(dataSql)
+            .then(() => {
+                console.log('Data populated');
+                pgp.end();
+            }).catch(err => {
+                console.log('Error populated data', err);
+                pgp.end();
+            });
     }).catch(err => {
-        console.log('Error populated data', err);
+        console.log('Error creating schema', err);
         pgp.end();
     });
-}).catch(err => {
-    console.log('Error creating schema', err);
-    pgp.end();
-});

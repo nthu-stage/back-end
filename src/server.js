@@ -1,11 +1,11 @@
 require('../config.js');
 const express = require('express');
 
-// const postRouter = require('./routers/posts.js');
+// const postRouter = require('./routers/posts.js')
 const workshopRouter  = require('./routers/workshops.js');
 const profileRouter   = require('./routers/profiles.js');
 const ideaRouter      = require('./routers/ideas.js');
-const dashboardRouter = require('./routers/dashboard.js')
+const dashboardRouter = require('./routers/dashboard.js');
 
 // const requestLogger = require('./middleware/request-logger.js');
 const fbChecker        = require('./middleware/fb-checker.js');
