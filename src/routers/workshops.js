@@ -12,10 +12,10 @@ router.use(bodyParser.json());
 
 // list
 router.get('/workshops', function(req, res, next) {
-    const {searchText, stateFilter, start} = req.query;
+    const {searchText, stateFilter, offset, limit} = req.query;
 
     workshopsModel
-        .list(searchText, stateFilter, start)
+        .list(searchText, stateFilter, offset, limit)
         .then(workshops => { res.json(workshops); })
         .catch(next);
 });
