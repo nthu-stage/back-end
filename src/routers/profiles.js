@@ -12,7 +12,7 @@ router.post('/profile', function(req, res, next) {
     const access_token = req.get('accessToken');
     const fb_id = req.get('userID');
     if (fb_id === undefined) {
-        const err = new Error('Not a corret ID for Login or Register');
+        const err = new Error('Login required userID(regOrLogin).');
         err.status = 401;
         throw err;
     }
@@ -20,7 +20,7 @@ router.post('/profile', function(req, res, next) {
     const {name, email="", picture_url=""} = req.body;
 
     if(!name) {
-        const err = new Error('Profiles Information are required');
+        const err = new Error('Profiles Information are required.');
         err.status = 400;
         throw err;
     }

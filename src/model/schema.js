@@ -181,7 +181,7 @@ function genDummyProfiles() {
             'user',
             '${genRandomAvaiTime()}',
             -- ${now - (n-i) * day_ms},
-            ${now - (n-i) * day_ms},
+            ${now - (n-i + Math.floor(7*Math.random()) + 7) * day_ms},
             ${now - (n-i) * day_ms}
         );
         `;
@@ -223,7 +223,7 @@ function genDummyWorkshops() {
             '${locations[i]}',
             '${phases[i]}',
             ${Math.random() * 100},
-            ${now - (n-i)*day_ms},
+            ${now - (n-i + Math.floor(7*Math.random()) + 7) * day_ms},
             ${now - (n-i)*day_ms}
         );
         `;
@@ -256,7 +256,7 @@ function genDummyIdeas() {
             '${goals[i]}',
             'some_web_url',
             'some_image_url',
-            ${now - (n-i)*day_ms},
+            ${now - (n-i + Math.floor(7*Math.random()))*day_ms},
             ${now - (n-i)*day_ms}
         );
         `;
@@ -298,7 +298,7 @@ function genAttendTable() {
         INSERT INTO attends VALUES(
             ${p},
             ${w},
-            ${now - Math.floor(Math.random()*len*2)}
+            ${now - (Math.floor(7*Math.random()))*day_ms}
         );
         `;
     }
@@ -325,7 +325,7 @@ function genLikeTable() {
         INSERT INTO likes VALUES(
             ${p},
             ${i},
-            ${now - Math.floor(Math.random()*len*2)}
+            ${now - (Math.floor(7*Math.random()))*day_ms}
         );
         `;
     }
