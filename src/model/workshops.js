@@ -356,9 +356,6 @@ function attend(w_id, fb_id) {
             case 0: {
                 return this.none(update_unreached_sql, {now});
             }
-            // case 1: {
-            //     return get_p_id.call(this, fb_id, {required: true});
-            // }
             case 1: {
                 // let p_id = data;
                 return this

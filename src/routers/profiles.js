@@ -9,6 +9,7 @@ router.use(bodyParser.json());
 
 //  regOrLogin
 router.post('/profile', function(req, res, next) {
+    const access_token = req.get('accessToken');
     const fb_id = req.get('userID');
     if (fb_id === undefined) {
         const err = new Error('Not a corret ID for Login or Register');
@@ -25,9 +26,10 @@ router.post('/profile', function(req, res, next) {
     }
 
     profilesModel
-        .regOrLogin(name, email, fb_id, picture_url).then(id => {
-        res.json(id);
-    }).catch(next);
+        .regOrLogin(fb_id, access_token, name, email, picture_url)
+        .then(id => {
+            res.json(id);
+        }).catch(next);
 });
 
 // show
@@ -48,7 +50,7 @@ router.get('/profile', function(req, res, next) {
         }
         res.json(profiles);
     }).catch(next);
-})
+});
 
 // update
 router.put('/profile', (req, res, next) => {
