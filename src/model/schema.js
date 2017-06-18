@@ -9,20 +9,26 @@ DROP TABLE IF EXISTS come_up_withs;
 DROP TABLE IF EXISTS likes;
 DROP TABLE IF EXISTS proposes;
 DROP TABLE IF EXISTS attends;
-DROP INDEX IF EXISTS profiles_idx_created_at;
-DROP INDEX IF EXISTS profiles_idx_updated_at;
 DROP TABLE IF EXISTS profiles;
 DROP TABLE IF EXISTS workshops;
+DROP TABLE IF EXISTS ideas;
 DROP TYPE  IF EXISTS state;
 DROP TYPE  IF EXISTS authority;
+DROP TYPE  IF EXISTS idea_type;
+DROP INDEX IF EXISTS profiles_idx_created_at;
+DROP INDEX IF EXISTS profiles_idx_updated_at;
+DROP INDEX IF EXISTS workshops_idx_created_at;
+DROP INDEX IF EXISTS workshops_idx_updated_at;
 DROP INDEX IF EXISTS ideas_idx_created_at;
 DROP INDEX IF EXISTS ideas_idx_updated_at;
 DROP INDEX IF EXISTS ideas_idx_skill;
 DROP INDEX IF EXISTS ideas_idx_goal;
-DROP TABLE IF EXISTS ideas;
-DROP TYPE  IF EXISTS idea_type;
+DROP INDEX IF EXISTS likes_created_at;
+DROP INDEX IF EXISTS attends_created_at;
 `;
 
+
+const default_avai_time = '[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]';
 
 const schemaProfileSql = `
 -- [profiles]
@@ -39,16 +45,17 @@ CREATE TYPE state AS ENUM (
     'unreached'
 );
 CREATE TABLE profiles (
-    id                  serial PRIMARY KEY NOT NULL,
-    name                text      NOT NULL DEFAULT '',
-    email               text      NOT NULL DEFAULT '',
-    fb_userid           text      NOT NULL DEFAULT '',
-    picture_url         text      NOT NULL DEFAULT '',
-    available_time      text      NOT NULL DEFAULT '',
-    authority           authority NOT NULL DEFAULT 'user',
-    last_login_datetime bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
-    created_at          bigint    NOT NULL DEFAULT (extract(epoch from now())*1000),
-    updated_at          bigint    NOT NULL DEFAULT (extract(epoch from now())*1000)
+    id                  serial    PRIMARY KEY  NOT     NULL,
+    name                text      NOT     NULL DEFAULT '',
+    email               text      NOT     NULL DEFAULT '',
+    fb_userid           text      NOT     NULL,
+    access_token        text      NOT     NULL,
+    picture_url         text      NOT     NULL DEFAULT '',
+    available_time      text      NOT     NULL DEFAULT ${default_avai_time},
+    authority           authority NOT     NULL DEFAULT 'user',
+    last_login_datetime bigint    NOT     NULL DEFAULT (extract(epoch from now())*1000),
+    created_at          bigint    NOT     NULL DEFAULT (extract(epoch from now())*1000),
+    updated_at          bigint    NOT     NULL DEFAULT (extract(epoch from now())*1000)
 );
 CREATE INDEX profiles_idx_created_at ON profiles USING btree(created_at);
 CREATE INDEX profiles_idx_updated_at ON profiles USING btree(updated_at);
@@ -74,6 +81,8 @@ CREATE TABLE workshops (
     created_at     bigint  NOT NULL DEFAULT (extract(epoch from now())*1000),
     updated_at     bigint  NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
+CREATE INDEX workshops_idx_created_at ON workshops USING btree(created_at);
+CREATE INDEX workshops_idx_updated_at ON workshops USING btree(updated_at);
 `;
 
 const schemaIdeaSql = `
@@ -111,7 +120,8 @@ CREATE TABLE come_up_withs (
 );
 CREATE TABLE likes (
     profile_id serial REFERENCES profiles(id) ON DELETE CASCADE,
-    idea_id    serial REFERENCES ideas(id)    ON DELETE CASCADE
+    idea_id    serial REFERENCES ideas(id)    ON DELETE CASCADE,
+    created_at bigint NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
 CREATE TABLE proposes (
     profile_id  serial REFERENCES profiles(id)  ON DELETE CASCADE,
@@ -119,8 +129,11 @@ CREATE TABLE proposes (
 );
 CREATE TABLE attends (
     profile_id  serial REFERENCES profiles(id)  ON DELETE CASCADE,
-    workshop_id serial REFERENCES workshops(id) ON DELETE CASCADE
+    workshop_id serial REFERENCES workshops(id) ON DELETE CASCADE,
+    created_at  bigint NOT NULL DEFAULT (extract(epoch from now())*1000)
 );
+CREATE INDEX likes_created_at   ON likes   USING btree(created_at);
+CREATE INDEX attends_created_at ON attends USING btree(created_at);
 `;
 
 const schemaSql = `
@@ -145,6 +158,7 @@ function genDummyProfiles() {
     const n = 7;
     const names      = ['Apple',            'Bike',             'Car',  'Dog',  'Ear',  'Race', 'Rust'];
     const fb_suerids = ['1514864711922034', '1833867746937550', '1234', '9527', '1036', '9487', '9062'];
+    const now = Date.now();
     var sql = '';
     for (let i=0; i<n; i++) {
         sql += `
@@ -166,9 +180,9 @@ function genDummyProfiles() {
             '${names[i]}_photo_url',
             'user',
             '${genRandomAvaiTime()}',
-            -- ${Date.now() - (n-i) * day_ms},
-            ${Date.now() - (n-i) * day_ms},
-            ${Date.now() - (n-i) * day_ms}
+            -- ${now - (n-i) * day_ms},
+            ${now - (n-i) * day_ms},
+            ${now - (n-i) * day_ms}
         );
         `;
     }
@@ -177,6 +191,7 @@ function genDummyProfiles() {
 
 function genDummyWorkshops() {
     const n = 5;
+    const now = Date.now();
     const titles    = ['React',   'Git',      'Archi',    'Linux',   'Stage'];
     const locations = ['London',  'Tokyo',    'Rome',     'Taipei',  'Hsinchu'];
     const phases    = ['judging', 'judge_na', 'judge_ac', 'reached', 'unreached'];
@@ -199,17 +214,17 @@ function genDummyWorkshops() {
         )
         VALUES(
             '${titles[i]}',
-            ${Date.now() + (n-i)*day_ms + 17*day_ms},
-            ${Date.now() + (n-i)*day_ms + 34*day_ms},
+            ${now + (n-i)*day_ms + 17*day_ms},
+            ${now + (n-i)*day_ms + 34*day_ms},
             ${Math.floor(Math.random() * 10)},
             ${Math.floor(Math.random() * 30)+10},
-            ${Date.now() + (n-i)*day_ms + 10*day_ms},
-            ${Date.now() + (n-i)*day_ms + 15*day_ms},
+            ${now + (n-i)*day_ms + 10*day_ms},
+            ${now + (n-i)*day_ms + 15*day_ms},
             '${locations[i]}',
             '${phases[i]}',
             ${Math.random() * 100},
-            ${Date.now()},
-            ${Date.now()}
+            ${now - (n-i)*day_ms},
+            ${now - (n-i)*day_ms}
         );
         `;
     }
@@ -219,6 +234,7 @@ function genDummyWorkshops() {
 
 function genDummyIdeas() {
     const n = 8;
+    const now = Date.now();
     const idea_types = ['learn', 'teach'];
     const skills=['Fire', 'Desire', 'Gun',   'Radio', 'Piano',  'Skin',  'Spot', 'Silence'];
     const goals=['Burn',  'Death',  'Shoot', 'Sound', 'Melody', 'Touch', 'View', 'Noise'];
@@ -240,8 +256,8 @@ function genDummyIdeas() {
             '${goals[i]}',
             'some_web_url',
             'some_image_url',
-            ${Date.now() - (n-i)*day_ms},
-            ${Date.now() - (n-i)*day_ms}
+            ${now - (n-i)*day_ms},
+            ${now - (n-i)*day_ms}
         );
         `;
     }
@@ -251,12 +267,12 @@ function genDummyIdeas() {
 function genProposeTable() {
     // all workshop need to be created by someone
     var sql = '';
-    const ps = [5, 1, 2, 6, 4];
+    const proposers = [5, 1, 2, 6, 4];
     for (let i=0; i<5; i++) {
         sql+=`
         INSERT INTO proposes VALUES(
-            ${ps[i]},   -- profile_id
-            ${i+1}      -- workshop_id
+            ${proposers[i]},
+            ${i+1}
         );
         `;
     }
@@ -266,6 +282,7 @@ function genProposeTable() {
 function genAttendTable() {
     // one profile could attends multiple workshop
     var sql = '';
+    const now = Date.now();
     // profile 2 attends nothing
     // noeone want to attends workshop 3
     const ary = [
@@ -275,11 +292,13 @@ function genAttendTable() {
         [6, 1], [6, 2], [6, 4],
         [7, 2], [7, 4], [7, 5],
     ];
+    const len = ary.length;
     for (let [p, w] of ary) {
         sql+=`
         INSERT INTO attends VALUES(
             ${p},
-            ${w}
+            ${w},
+            ${now - Math.floor(Math.random()*len*2)}
         );
         `;
     }
@@ -289,6 +308,7 @@ function genAttendTable() {
 function genLikeTable() {
     // one profile could attends multiple workshop
     var sql = '';
+    const now = Date.now();
     // profile 5 dont likes anyone
     // noone likes idea 7
     const ary = [
@@ -299,11 +319,13 @@ function genLikeTable() {
         [6, 1], [6, 4], [6, 8],
         [7, 3], [7, 6], [7, 5],
     ];
+    const len = ary.length;
     for (let [p, i] of ary) {
         sql+=`
         INSERT INTO likes VALUES(
             ${p},
-            ${i}
+            ${i},
+            ${now - Math.floor(Math.random()*len*2)}
         );
         `;
     }
