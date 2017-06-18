@@ -3,11 +3,12 @@ if (!global.db) {
     db = pgp(process.env.DB_URL);
 }
 
-const FB = require('fb');
 const pgp = require('pg-promise')();
 
-const fn = require('../fn.js');
-const get_p_id = fn.get_p_id;
+const {
+    get_p_id,
+    get_fb_friends,
+} = require('../fn.js');
 
 /////////////////
 //  API below  //
@@ -112,37 +113,10 @@ function list(fb_id) {
         // console.log(`source(${index}, ${JSON.stringify(data)})`);
         switch (index) {
             case 0: {
-                // [TODO] handle expired access_token
-                return this.any(get_access_token_sql, {fb_id});
+                return get_fb_friends.call(this, fb_id);
             }
             case 1: {
-                // console.log('data: '+JSON.stringify(data));
-                const [{access_token} = {access_token: ''}, ] = data;
-                // console.log('access_token: '+JSON.stringify(access_token));
-                return new Promise((resolve, reject) => {
-                    FB.api('/me/friends', {access_token}, res => {
-                        // [TODO] handle paging
-                        if (res.hasOwnProperty('error')) {
-                            reject(res);
-                        } else {
-                            // console.log('res: '+JSON.stringify(res));
-                            let friends = res.data
-                                .map(user => user.id);
-                            friends.push('1514864711922034');   // TODO: test only
-                            // console.log('friends: '+JSON.stringify(friends));
-                            resolve(friends);
-                        }
-                    });
-                });
-            }
-            case 2: {
                 const friends = data;
-                // transfrom friends (fb_id -> p_id)
-                return this.batch(friends.map(fb_id => get_p_id.call(this, fb_id)));
-            }
-            case 3: {
-                const friends = data.filter(x => (x !== 0));
-                // console.log('friends with pid: '+JSON.stringify(friends));
                 let values = {};
                 for (let value of friends) {
                     values[value.toString()] = value;

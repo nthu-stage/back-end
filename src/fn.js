@@ -1,3 +1,5 @@
+var FB = require('fb');
+
 function tsWrapper (object, prop) {
     if (object[prop]) {
         // object[prop] = new Date((+ object[prop])*1000).toString();
@@ -27,7 +29,52 @@ function get_p_id (fb_id, options = {required: false}) {
         });
 }
 
+// get_fb_friends.call(db, fb_id, {required: true}) -> Promise(friends)
+function get_fb_friends (fb_id, options = {required: false}) {
+    // [TODO] handle expired access_token
+
+    // any(fb_id) -> [{access_token} = {access_token=''}, ], if fb_id not exists would broke
+    const get_access_token_sql = `
+    SELECT access_token
+    FROM profiles
+    WHERE fb_userid = $(fb_id)
+    `;
+
+    function graph_api_my_friends (access_token) {
+        return new Promise((resolve, reject) => {
+            FB.api('/me/friends', {access_token}, res => {
+                if (res.hasOwnProperty('error')) {
+                    reject(res);
+                    return;
+                }
+                // console.log('res: '+JSON.stringify(res));
+                // [TODO] handle paging
+                let friends = res.data.map(user => user.id);
+                friends.push('1514864711922034');   // TODO: test only
+                // console.log('friends: '+JSON.stringify(friends));
+                resolve(friends);
+            });
+        });
+    }
+
+    return this
+        .any(get_access_token_sql, {fb_id})
+        .then( ([{access_token} = {access_token: ''}, ]) => {
+            if (access_token === '' && options.required) {
+                const err = new Error('empty access_token or non-existent profile with this fb_id(get_fb_friends).');
+                err.status = 400;
+                throw err;
+            } else if (access_token === '') {
+                return [];
+            }
+            return graph_api_my_friends(access_token);
+        }).then(friends => {
+            return this.batch(friends.map(fb_id => get_p_id.call(this, fb_id)));
+        }).then(friends => friends.filter(x => (x !== 0)));
+}
+
 module.exports = {
     tsWrapper,
-    get_p_id
+    get_p_id,
+    get_fb_friends,
 };
