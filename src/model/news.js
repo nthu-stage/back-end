@@ -15,7 +15,7 @@ const {
 
 function list(fb_id) {
     // [TODO] query with pagination
-    // [TODO] get news within ? days
+    // [TODO] get news within ? days, temp within 7 days
 
     function n_days_ago (n) {
         const now = new Date(Date.now());
