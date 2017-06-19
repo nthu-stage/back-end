@@ -74,17 +74,21 @@ function get_fb_friends (fb_id, options = {required: false}) {
         }).then(friends => friends.filter(x => (x !== 0)));
 }
 
-function query_values (datas) {
+function query_values (ids) {
     // passing in query parameter
     // in sql statement, use ${values:raw}
-    // notice that datas must be UNIQUE
+    // notice that ids must be UNIQUE
 
     //! sql = "... WHERE column IN $(col:raw)"
-    //! db.any(sql, {col: query_values(datas)});
+    //! db.any(sql, {col: query_values(ids)});
 
+    if (ids.length === 0) {
+        // return an unvalid id, force where select nothing
+        return '(0)';
+    }
     let values = {};
-    for (let d of datas) {
-        values[d.toString()] = d;
+    for (let id of ids) {
+        values[id.toString()] = id;
     }
     return pgp.helpers.values(values);
 }
