@@ -1,3 +1,4 @@
+var FB = require('fb');
 if (!global.db) {
     const pgp = require('pg-promise')();
     db = pgp(process.env.DB_URL);
@@ -6,49 +7,88 @@ if (!global.db) {
 // common sql
 const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$(fb_id)`;
 
-function regOrLogin(name, email, fb_userid, picture_url) {
+function regOrLogin(fb_userid, access_token, name, email, picture_url) {
 
-    const checkSQL = `
-    SELECT count(profiles.id)
-    FROM profiles
-    WHERE profiles.fb_userid = $1;
+    function transform_long_lived_token () {
+        return new Promise((resolve, reject) => {
+            FB.api('/oauth/access_token', {
+                grant_type: 'fb_exchange_token',
+                client_id: 1812105742383573,
+                client_secret: process.env.FB_APP_STAGE_SECRET,
+                fb_exchange_token: access_token
+            }, res => {
+                if (res.hasOwnProperty('error')) {
+                    reject(res);
+                } else {
+                    console.log('before: '+access_token);
+                    access_token = res.access_token;
+                    console.log('after:  '+access_token);
+                    console.log('res: '+JSON.stringify(res));
+                    console.log('expires: '+res.expires_in);
+                    resolve();
+                }
+            });
+        });
+    }
+
+    // one(fb_userid) -> p_id
+    const get_p_id_sql = `
+    SELECT id AS p_id FROM profiles
+    WHERE fb_userid = $(fb_userid)
     `;
 
-    const createProfilesSQL = `
+    const create_profile_sql = `
     INSERT INTO profiles ($<this:name>)
     VALUES (
         $(name),
         $(email),
         $(fb_userid),
-        $(picture_url),
-        $(authority),
-        $(available_time)
-    )
-    RETURNING id as p_id;
+        $(access_token),
+        $(picture_url)
+    );
     `;
 
-    const updateProfile = `
+    const update_profile_sql = `
     UPDATE profiles
-    SET
-    name = $(name),
-        email = $(email),
-        picture_url = $(picture_url),
+    SET name                = $(name),
+        email               = $(email),
+        access_token        = $(access_token),
+        picture_url         = $(picture_url),
         last_login_datetime = (extract(epoch from now()))
-    WHERE profiles.fb_userid = $(fb_userid)
-    RETURNING id as p_id;
+    WHERE fb_userid = $(fb_userid);
     `;
 
-    var available_time = '[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]';
-    var authority = 'user';
-    return db
-        .one(checkSQL, fb_userid)
-        .then(state => {
-            if(state.count <= 0) {
-                return db.one(createProfilesSQL, {name, email, fb_userid, picture_url, authority, available_time});
-            } else {
-                return db.one(updateProfile, {name, email, fb_userid, picture_url});
+
+    // one(name, email, fb_userid, access_token, picture_url) -> p_id
+    const create_or_update_profile_sql = `
+    DO
+    $do$
+    BEGIN
+    IF ( SELECT COUNT(*) FROM profiles WHERE fb_userid = $(fb_userid) ) > 0 THEN
+    ${update_profile_sql}
+    ELSE
+    ${create_profile_sql}
+    END IF;
+    END
+    $do$;
+    `;
+
+    function source(index, data, delay) {
+        switch (index) {
+            case 0: {
+                return this.none(create_or_update_profile_sql,
+                    {name, email, fb_userid, access_token, picture_url});
             }
-        });
+            case 1: {
+                return this.one(get_p_id_sql, {fb_userid});
+            }
+        }
+    }
+
+    return transform_long_lived_token.call(this)
+        .then(() => db.tx(t => t.sequence(source, {track: true})))
+        .then(data => data.slice(-1)[0])
+        .catch(err => { throw err.error; });
 }
 
 

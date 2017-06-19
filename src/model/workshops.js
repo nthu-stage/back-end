@@ -246,7 +246,7 @@ function show(w_id, fb_id) {
 
     // one(w_id) -> {workshop_id, name}
     const get_proposer_sql = `
-    SELECT workshop_id, name
+    SELECT workshop_id, name, picture_url
     FROM profiles
     INNER JOIN proposes
     ON profiles.id=proposes.profile_id
@@ -276,7 +276,8 @@ function show(w_id, fb_id) {
         end_datetime,
         deadline,
         pre_deadline,
-        proposer.name AS name,
+        proposer.name,
+        proposer.picture_url,
         COUNT(attends.profile_id) AS attendees_number,
         bool_or(attends.profile_id=$(p_id)) AS attended
     FROM workshops
@@ -288,8 +289,9 @@ function show(w_id, fb_id) {
     on attends.workshop_id=workshops.id
     WHERE workshops.id=$(w_id)
     GROUP BY
-    workshops.id,
-        proposer.name;
+        workshops.id,
+        proposer.name,
+        proposer.picture_url;
     `;
 
     function source(index, data, delay) {
@@ -372,9 +374,6 @@ function attend(w_id, fb_id) {
             case 0: {
                 return this.none(update_unreached_sql, {now});
             }
-            // case 1: {
-            //     return get_p_id.call(this, fb_id, {required: true});
-            // }
             case 1: {
                 // let p_id = data;
                 return this
