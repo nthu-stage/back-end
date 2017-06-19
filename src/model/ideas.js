@@ -11,7 +11,7 @@ const check_author_sql = `
 SELECT COUNT(*) AS is_author FROM come_up_withs WHERE profile_id=$(p_id) AND idea_id=$(i_id)
 `;
 
-function list(searchText, order, fb_id=null, offset=8, limit=0) {
+function list(searchText, order, fb_id=null, offset=0, limit=8) {
     // [TODO]: search priority skill > goal.
     const where = [];
     const search = ['skill', 'goal'].map(s => {
