@@ -9,26 +9,20 @@ const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$(fb_id)`;
 
 function regOrLogin(fb_userid, access_token, name, email, picture_url) {
 
-    function transform_long_lived_token () {
-        return new Promise((resolve, reject) => {
-            FB.api('/oauth/access_token', {
+    function transform_long_lived_token (access_token) {
+        return FB
+            .api('/oauth/access_token', {
                 grant_type: 'fb_exchange_token',
                 client_id: 1812105742383573,
                 client_secret: process.env.FB_APP_STAGE_SECRET,
                 fb_exchange_token: access_token
-            }, res => {
-                if (res.hasOwnProperty('error')) {
-                    reject(res);
-                } else {
-                    console.log('before: '+access_token);
-                    access_token = res.access_token;
-                    console.log('after:  '+access_token);
-                    console.log('res: '+JSON.stringify(res));
-                    console.log('expires: '+res.expires_in);
-                    resolve();
-                }
+            }).then(res => {
+                console.log('before: '+access_token);
+                console.log('after:  '+res.access_token);
+                console.log('res: '+JSON.stringify(res));
+                console.log('expires: '+res.expires_in);
+                return res.access_token;
             });
-        });
     }
 
     // one(fb_userid) -> p_id
@@ -85,7 +79,8 @@ function regOrLogin(fb_userid, access_token, name, email, picture_url) {
         }
     }
 
-    return transform_long_lived_token.call(this)
+    return transform_long_lived_token.call(this, access_token)
+        .then(long => { access_token = long; })
         .then(() => db.tx(t => t.sequence(source, {track: true})))
         .then(data => data.slice(-1)[0])
         .catch(err => { throw err.error; });
