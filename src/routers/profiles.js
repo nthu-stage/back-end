@@ -27,9 +27,8 @@ router.post('/profile', function(req, res, next) {
 
     profilesModel
         .regOrLogin(fb_id, access_token, name, email, picture_url)
-        .then(id => {
-            res.json(id);
-        }).catch(next);
+        .then(id => { res.json(id); })
+        .catch(next);
 });
 
 // show

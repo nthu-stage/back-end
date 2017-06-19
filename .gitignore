@@ -6,6 +6,7 @@ logs.txt
 env.sh
 dump.sh
 *.dump
+src/model/gen-rds-fake-data
 
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
