@@ -2,6 +2,11 @@ if (!global.db) {
     const pgp = require('pg-promise')();
     db = pgp(process.env.DB_URL);
 }
+const {
+    get_p_id,
+    get_fb_friends,
+    query_values,
+} = require('../fn.js');
 
 // ===[common sql]===
 // {fb_id} => {p_id}
@@ -11,7 +16,7 @@ const check_author_sql = `
 SELECT COUNT(*) AS is_author FROM come_up_withs WHERE profile_id=$(p_id) AND idea_id=$(i_id)
 `;
 
-function list(searchText, order, fb_id=null, start) {
+function list(searchText, order, fb_id, start) {
     // [TODO]: search priority skill > goal.
     const search = ['skill', 'goal'].map(s => {
         return `${s} ILIKE '%$2:value%'`;
@@ -63,21 +68,29 @@ function list(searchText, order, fb_id=null, start) {
 }
 
 function show (i_id, fb_id) {
-    const profile_availableSQL = `
-    SELECT profiles.available_time
+    var p_id;
+
+    function adapter (idea) {
+        idea.like_number = +idea.like_number;
+        if (idea.liked === null) idea.liked = false;
+        return idea;
+    }
+
+    const idea_friends_sql = `
+    SELECT id AS p_id, name, picture_url
+    FROM profiles
+    WHERE id IN $(friends:raw)
+    `;
+
+    const schedules_sql = `
+    SELECT available_time
     FROM profiles
     INNER JOIN likes
-    on likes.idea_id = $1
-    AND likes.profile_id = profiles.id;
+    ON profiles.id = likes.profile_id
+    WHERE likes.idea_id = $(i_id);
     `;
 
-    const profilesSQL = `
-    SELECT profiles.id
-    FROM profiles
-    WHERE profiles.fb_userid = $1;
-    `;
-
-    const ideasSQL = `
+    const ideas_sql = `
     SELECT
     i.id as i_id,
         i.idea_type as idea_type,
@@ -88,15 +101,15 @@ function show (i_id, fb_id) {
         i.image_url,
         profiles.picture_url,
         profiles.name,
-        bool_and(come_up_withs.profile_id = $2) as "isEditor",
-        bool_or(l1.profile_id = $2) as liked
+        bool_and(come_up_withs.profile_id = $(p_id)) as "isEditor",
+        bool_or(l1.profile_id = $(p_id)) as liked
     FROM ideas as i
     INNER JOIN come_up_withs
-    on come_up_withs.idea_id = i.id AND i.id = $1
+    on come_up_withs.idea_id = i.id AND i.id = $(i_id)
     INNER JOIN profiles
     on profiles.id = come_up_withs.profile_id
     LEFT JOIN likes l1
-    on l1.idea_id = $1
+    on l1.idea_id = $(i_id)
     GROUP BY
     i.id,
         i.idea_type,
@@ -108,50 +121,51 @@ function show (i_id, fb_id) {
         profiles.name;
     `;
 
-    return db.task(t => {
-        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
-            //Calculate top 5
-            var mostAvaiTime = db.any(profile_availableSQL, i_id)
-                .then(schedule => {
-                    var available = [];
-
-                    for(let i=0 ; i<21 ; i++) {
-                        available.push({
-                            time: i,
-                            people: 0
-                        });
-                    }
-
-                    for(let i of schedule) {
-                        let count = 0;
-                        let time = 0;
-                        while(count < i.available_time.length) {
-                            if(i.available_time[count] === 't') {
-                                available[time].people += 1;
-                                time += 1;
-                            } else if(i.available_time[count] === 'f') {
-                                time += 1;
-                            }
-                            count += 1;
-                        }
-                    }
-
-                    available.sort(function(a,b){ return b.people - a.people; });
-                    // console.log(available);
-                    return available.slice(0, 5);
-                });
-
-            var ideas = db.one(ideasSQL, [i_id, p_id]);
-
-            return Promise.all([ideas, mostAvaiTime])
-                .then(([ideas, mostAvaiTime]) => {
-                    ideas.mostAvaiTime = mostAvaiTime;
-                    return new Promise((resolve, reject) => {
-                        resolve(ideas);
+    function source(index, data, delay) {
+        function schedule_addition (xs, ys) {
+            return xs.map((x, index) => ({
+                time: index,
+                people: x.people + ys[index].people
+            }));
+        }
+        switch (index) {
+            case 0: {
+                let empty_schedule=[];
+                for (let i=0; i<21; i++) {
+                    empty_schedule.push({
+                        time: i,
+                        people: 0
                     });
-                });
-        });
-    });
+                }
+                var ideas = this.one(ideas_sql, {i_id, p_id});
+                var most_avai_time = this
+                    .any(schedules_sql, {i_id})
+                    .then(schedules => schedules
+                            .map(x => JSON.parse(x.available_time))
+                            .map(xs => xs.map((x, index) => ({time: index, people: x})))
+                            .reduce(schedule_addition, empty_schedule)
+                            .sort((a, b) => b.people - a.people)
+                            .slice(0, 5));
+                var friends = get_fb_friends
+                    .call(this, fb_id)
+                    .then(friends => this.any(idea_friends_sql, {friends: query_values(friends)}));
+                return this.batch([ideas, most_avai_time, friends]);
+            }
+            case 1: {
+                let [idea, most_avai_time, friends] = data;
+                idea.most_avai_time = most_avai_time;
+                idea.friends = friends;
+                return idea;
+            }
+        }
+    }
+
+    return get_p_id.call(db, fb_id)
+        .then(x => { p_id = x; })
+        .then(() => db.tx(t => t.sequence(source, {track: true})))
+        .then(data => data.slice(-1)[0])
+        .then(idea => adapter(idea))
+        .catch(err => { throw err.error; });
 }
 
 function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {

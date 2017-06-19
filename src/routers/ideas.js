@@ -38,16 +38,15 @@ router.get('/ideas/:i_id', function(req, res, next) {
     }
     const {i_id} = req.params;
     if (!i_id) {
-        const err = new Error('Show workshop page, workshop ID is required.');
+        const err = new Error('idea ID is required.(show)');
         err.status = 400;
         throw err;
     }
 
-    ideasModel.show(i_id, fb_id).then(ideas => {
-		    ideas.like_number = (+ ideas.like_number);
-        if(ideas.liked === null) ideas.liked = false;
-        res.json(ideas);
-    }).catch(next);
+    ideasModel
+        .show(i_id, fb_id)
+        .then(idea => { res.json(idea); })
+        .catch(next);
 });
 
 // list

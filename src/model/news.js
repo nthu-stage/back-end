@@ -3,11 +3,10 @@ if (!global.db) {
     db = pgp(process.env.DB_URL);
 }
 
-const pgp = require('pg-promise')();
-
 const {
     get_p_id,
     get_fb_friends,
+    query_values,
 } = require('../fn.js');
 
 /////////////////
@@ -117,12 +116,8 @@ function list(fb_id) {
             }
             case 1: {
                 const friends = data;
-                let values = {};
-                for (let value of friends) {
-                    values[value.toString()] = value;
-                }
                 return this.any(sql, {
-                    friends: pgp.helpers.values(values),
+                    friends: query_values(friends),
                     from: n_days_ago(7)
                 });
             }

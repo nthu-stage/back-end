@@ -1,4 +1,5 @@
 var FB = require('fb');
+const pgp = require('pg-promise')();
 
 function tsWrapper (object, prop) {
     if (object[prop]) {
@@ -73,8 +74,24 @@ function get_fb_friends (fb_id, options = {required: false}) {
         }).then(friends => friends.filter(x => (x !== 0)));
 }
 
+function query_values (datas) {
+    // passing in query parameter
+    // in sql statement, use ${values:raw}
+    // notice that datas must be UNIQUE
+
+    //! sql = "... WHERE column IN $(col:raw)"
+    //! db.any(sql, {col: query_values(datas)});
+
+    let values = {};
+    for (let d of datas) {
+        values[d.toString()] = d;
+    }
+    return pgp.helpers.values(values);
+}
+
 module.exports = {
     tsWrapper,
     get_p_id,
     get_fb_friends,
+    query_values,
 };
