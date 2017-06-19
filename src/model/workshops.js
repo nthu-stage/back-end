@@ -408,6 +408,7 @@ function attend(w_id, fb_id) {
         .then(x => { p_id = x; })
         .then(() => db.tx(t => t.sequence(source, {track: true})))
         .then(data => data.slice(-1)[0])
+        .then(workshop => adapter(workshop))
         .catch(err => { throw err.error; });
 }
 
