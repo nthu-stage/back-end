@@ -42,20 +42,16 @@ function get_fb_friends (fb_id, options = {required: false}) {
     `;
 
     function graph_api_my_friends (access_token) {
-        return new Promise((resolve, reject) => {
-            FB.api('/me/friends', {access_token}, res => {
-                if (res.hasOwnProperty('error')) {
-                    reject(res);
-                    return;
-                }
+        return FB
+            .api('/me/friends', {access_token})
+            .then(res => {
                 // console.log('res: '+JSON.stringify(res));
                 // [TODO] handle paging friends
                 let friends = res.data.map(user => user.id);
                 // friends.push('1514864711922034');   // TODO: test only
                 // console.log('friends: '+JSON.stringify(friends));
-                resolve(friends);
+                return friends;
             });
-        });
     }
 
     return this
