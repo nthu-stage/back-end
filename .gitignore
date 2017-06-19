@@ -4,6 +4,7 @@ npm-debug.log
 data-*.json
 logs.txt
 env.sh
+dump.sh
 *.dump
 
 # Elastic Beanstalk Files
