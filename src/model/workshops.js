@@ -92,7 +92,7 @@ function adapter(workshop) {
 //  API below  //
 /////////////////
 
-function list(searchText, stateFilter, offset, limit) {
+function list(searchText, stateFilter, offset=0, limit=8) {
     const now = Date.now();
 
     var where = [];
