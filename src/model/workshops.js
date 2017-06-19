@@ -92,7 +92,7 @@ function adapter(workshop) {
 //  API below  //
 /////////////////
 
-function list(searchText, stateFilter, start) {
+function list(searchText, stateFilter, offset, limit) {
     const now = Date.now();
 
     var where = [];
@@ -100,13 +100,13 @@ function list(searchText, stateFilter, start) {
         // [TODO]:  temporarialy only search title.
         where.push(`w.title ILIKE '%$(searchText:value)%'`);
     }
-    if (start) {
-        where.push(`$<start> < deadline`);
+    if (offset) {
+        where.push(`rownum > $<offset>`);
     }
 
-    // any(searchText, stateFilter) -> [{attendees_number, ...workshop}]
     const get_workshop_list_sql = `
-    SELECT w.id AS w_id,
+    SELECT
+        w.id AS w_id,
         w.image_url,
         w.title,
         w.min_number,
@@ -119,13 +119,29 @@ function list(searchText, stateFilter, start) {
         w.start_datetime,
         w.end_datetime,
         w.state
-    FROM workshops AS w
+    FROM (
+        SELECT ROW_NUMBER() OVER ( ORDER BY workshops.deadline ASC ) AS rownum, *
+        FROM workshops
+    ) AS w
     LEFT JOIN attends AS a
     ON w.id = a.workshop_id
     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-    GROUP BY w.id
-    ORDER BY w.deadline ASC
-    LIMIT 8
+    GROUP BY
+      w.id,
+      w.image_url,
+      w.title,
+      w.min_number,
+      w.max_number,
+      w.deadline,
+      w.pre_deadline,
+      w.introduction,
+      w.price,
+      w.start_datetime,
+      w.end_datetime,
+      w.state,
+      w.rownum
+    ORDER BY rownum ASC
+    LIMIT $<limit>
     `;
     function state_filter_predicate(workshop) {
         switch (stateFilter) {
@@ -144,7 +160,7 @@ function list(searchText, stateFilter, start) {
                 return this.none(update_unreached_sql, {now});
             }
             case 1: {
-                return this.any(get_workshop_list_sql, {searchText, stateFilter, start});
+                return this.any(get_workshop_list_sql, {searchText, stateFilter, offset, limit});
             }
             case 2: {
                 let workshops = data;
