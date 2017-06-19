@@ -49,9 +49,9 @@ function get_fb_friends (fb_id, options = {required: false}) {
                     return;
                 }
                 // console.log('res: '+JSON.stringify(res));
-                // [TODO] handle paging
+                // [TODO] handle paging friends
                 let friends = res.data.map(user => user.id);
-                friends.push('1514864711922034');   // TODO: test only
+                // friends.push('1514864711922034');   // TODO: test only
                 // console.log('friends: '+JSON.stringify(friends));
                 resolve(friends);
             });
