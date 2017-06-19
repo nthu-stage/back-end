@@ -37,7 +37,7 @@ function list(searchText, order, fb_id=null, offset=0, limit=8) {
         SELECT
         ROW_NUMBER() OVER ( ORDER BY created_at DESC ) AS created_rownum, *
         FROM ideas
-    `
+    `;
     const liked_sql = `
     SELECT
     ideas.id AS id, COUNT(user_likes.profile_id) AS liked
