@@ -6,6 +6,7 @@ const workshopRouter  = require('./routers/workshops.js');
 const profileRouter   = require('./routers/profiles.js');
 const ideaRouter      = require('./routers/ideas.js');
 const dashboardRouter = require('./routers/dashboard.js');
+const newsRouter      = require('./routers/news.js');
 
 // const requestLogger = require('./middleware/request-logger.js');
 const fbChecker        = require('./middleware/fb-checker.js');
@@ -27,6 +28,7 @@ app.use('/api', workshopRouter);
 app.use('/api', profileRouter);
 app.use('/api', ideaRouter);
 app.use('/api', dashboardRouter);
+app.use('/api', newsRouter);
 app.get('/*', (req, res) => res.redirect('/'));
 app.use(errorHandler);
 
