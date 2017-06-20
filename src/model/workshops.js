@@ -3,8 +3,12 @@ if (!global.db) {
     db = pgp(process.env.DB_URL);
 }
 
-const fn = require('../fn.js');
-const get_p_id = fn.get_p_id;
+const pgp = require('pg-promise')({
+    capSQL: true
+});
+const {
+    get_p_id,
+} = require('../fn.js');
 
 // none(now) -> void
 const update_unreached_sql = `
@@ -179,66 +183,41 @@ function list(searchText, stateFilter, offset=0, limit=8) {
         .catch(err => { throw err.error; });
 }
 
-function propose(
-    fb_id,
-    image_url,
-    start_datetime,
-    end_datetime,
-    location,
-    content,
-    title,
-    min_number,
-    max_number,
-    deadline,
-    introduction,
-    price,
-    state
-){
-    const workshopsSQL = `
-    INSERT INTO workshops ($<this:name>)
-    VALUES (
-        $(image_url),
-        $(start_datetime),
-        $(end_datetime),
-        $(location),
-        $(content),
-        $(title),
-        $(min_number),
-        $(max_number),
-        $(deadline),
-        $(introduction),
-        $(price),
-        $(state)
-    )
-    RETURNING workshops.id as w_id;
-    `;
+function propose (fb_id, newWorkshopObj) {
+    // [TODO]: handle pre_deadline settings: temporarialy the same as deadline
 
-    const proposeSQL = `
-    INSERT INTO proposes
-    SELECT profiles.id, workshops.id
-    FROM profiles, workshops
-    WHERE profiles.fb_userid = $1 AND workshops.id = $2
-    RETURNING workshop_id AS w_id;
-    `;
+    var profile_id;
 
-    return db.one(workshopsSQL, {
-        image_url,
-        start_datetime,
-        end_datetime,
-        location,
-        content,
-        title,
-        min_number,
-        max_number,
-        deadline,
-        introduction,
-        price,
-        state
-    }).then(workshops => {
-        return db.one(proposeSQL, [fb_id, workshops.w_id]);
-    }).catch(error => {
-        console.log('ERROR:', error); // print the error;
-    });
+    function source(index, data, delay) {
+        switch (index) {
+            case 0: {
+                // insert new workshop
+
+                // manually setting field
+                newWorkshopObj.state = 'judging';
+                newWorkshopObj.pre_deadline = newWorkshopObj.deadline;
+
+                let sql = pgp.helpers.insert(newWorkshopObj, null, 'workshops');
+                sql += ' RETURNING workshops.id AS w_id;';
+                return this.one(sql);
+            }
+            case 1: {
+                // insert new propose
+                const {w_id: workshop_id} = data;
+                let newProposeObj = {workshop_id, profile_id};
+                let sql = pgp.helpers.insert(newProposeObj, null, 'proposes');
+                sql += ' RETURNING workshop_id AS w_id;';
+                return this.one(sql);
+            }
+        }
+    }
+
+
+    return get_p_id.call(db, fb_id)
+        .then(x => { profile_id = x; })
+        .then(() => db.tx(t => t.sequence(source, {track: true})))
+        .then(data => data.slice(-1)[0])
+        .catch(err => { throw err.error; });
 }
 
 function show(w_id, fb_id) {

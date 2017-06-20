@@ -49,53 +49,33 @@ router.post('/workshops', function(req, res, next) {
         throw err;
     }
 
-    const {
-        image_url = "",
-        start_datetime,
-        end_datetime,
-        location,
-        content,
-        title,
-        min_number,
-        max_number,
-        deadline,
-        introduction,
-        price
-    } = req.body;
+    const props = [
+        'image_url',
+        'start_datetime',
+        'end_datetime',
+        'location',
+        'content',
+        'title',
+        'min_number',
+        'max_number',
+        'deadline',
+        'introduction',
+        'price'
+    ];
 
-    if(
-        !start_datetime ||
-        !end_datetime ||
-        !location ||
-        !content ||
-        !title ||
-        !min_number ||
-        !max_number ||
-        !deadline ||
-        !introduction ||
-        !price
-    ) {
-        const err = new Error('Workshops Information are required');
-        err.status = 400;
-        throw err;
+    let proposeObj = {};
+    for (let prop of props) {
+        if (req.body[prop] === undefined) {
+            const err = new Error('Workshops Information are required');
+            err.status = 400;
+            throw err;
+        }
+        proposeObj[prop] = req.body[prop];
     }
 
     workshopsModel
-        .propose(
-            fb_id,
-            image_url,
-            new Date(start_datetime).getTime(),
-            new Date(end_datetime).getTime(),
-            location,
-            content,
-            title,
-            min_number,
-            max_number,
-            new Date(deadline).getTime(),
-            introduction,
-            price,
-            'judging'
-        ).then(id => res.json(id))
+        .propose(fb_id, proposeObj)
+        .then(id => res.json(id))
         .catch(next);
 });
 
