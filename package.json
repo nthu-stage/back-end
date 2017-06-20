@@ -7,6 +7,8 @@
     "start": "node src/server.js",
     "watch": "nodemon src/server.js",
     "schema": "node src/model/schema.js",
+    "remote-rds": "node src/model/database/remote-rds.js",
+    "local-db": "node src/model/database/local-db.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
