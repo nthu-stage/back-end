@@ -348,6 +348,16 @@ function attend(w_id, fb_id) {
     GROUP BY workshops.id
     `;
 
+    const get_attendees_number_sql = `
+        SELECT
+            COUNT(*) AS attendees_number
+        FROM workshops
+        LEFT JOIN attends
+        on attends.workshop_id = workshops.id
+        WHERE workshops.id = $(w_id)
+        GROUP BY workshops.id;
+    `;
+
     function source(index, data, delay) {
         switch (index) {
             case 0: {
@@ -378,6 +388,13 @@ function attend(w_id, fb_id) {
                 return null;
             }
             case 3: {
+                return this.one(get_attendees_number_sql, {w_id});
+            }
+            case 4: {
+                const {attendees_number} = data;
+                return this.none(update_reached_sql, {attendees_number}).then(() => null);
+            }
+            case 5: {
                 return this.one(get_attended_sql, {w_id, p_id});
             }
         }
