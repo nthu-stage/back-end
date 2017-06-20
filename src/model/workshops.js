@@ -208,6 +208,7 @@ function propose (fb_id, newWorkshopObj) {
 
 function show(w_id, fb_id) {
     var p_id;
+    const now=Date.now();
 
     // one(w_id) -> {workshop_id, name}
     const get_proposer_sql = `
@@ -259,30 +260,20 @@ function show(w_id, fb_id) {
         proposer.picture_url;
     `;
 
-    function source(index, data, delay) {
-        const now=Date.now();
-        switch (index) {
-            case 0: {
-                return this.none(update_unreached_sql, {now});
-            }
-            case 1: {
-                return this.one(get_workshop_sql, {w_id, p_id});
-            }
-            case 2: {
-                let workshop = data;
-                attach_phase_on_workshop(workshop, now);
-                delete workshop.state;
-                return workshop;
-            }
-        }
-    }
+    return db.tx(t => {
+        return get_p_id.call(t, fb_id).then(x => {
+            p_id = x;
+        }).then(() => {
+            return t.none(update_unreached_sql, {now});
+        }).then(() => {
+            return t.one(get_workshop_sql, {w_id, p_id});
+        }).then(workshop => {
+            attach_phase_on_workshop(workshop, now);
+            delete workshop.state;
+            return adapter(workshop);
+        });
+    });
 
-    return get_p_id.call(db, fb_id)
-        .then(x => { p_id = x; })
-        .then(() => db.tx(t => t.sequence(source, {track: true})))
-        .then(data => data.slice(-1)[0])
-        .then(w => adapter(w))
-        .catch(err => { throw err.error; });
 }
 
 function attend(w_id, fb_id) {
