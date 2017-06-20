@@ -20,19 +20,28 @@ function list(searchText, order, fb_id=null, offset=0, limit=8) {
     // [TODO]: search priority skill > goal.
     var where = [];
     const search = ['skill', 'goal'].map(s => {
-        return `${s} ILIKE '%$2:value%'`;
+        return `${s} ILIKE '%$(searchText:value)%'`;
     });
     if (searchText)
         where.push(search.join(' OR '));
     if (offset) {
         if (order === 'hot')
-            where.push(`$3 < like_rownum`);
+            where.push(`$(offset) < like_rownum`);
         else
-            where.push(`$3 < created_rownum`);
+            where.push(`$(offset) < created_rownum`);
     }
 
-    // $1 = p_id
-    const user_likes_sql = `SELECT * FROM likes WHERE likes.profile_id = $1 `;
+    const user_likes_sql = `SELECT * FROM likes WHERE likes.profile_id = $(p_id) `;
+    const author_icon_sql = `
+        SELECT
+            ideas.id AS id,
+            picture_url
+        FROM ideas
+        INNER JOIN come_up_withs
+        ON come_up_withs.idea_id = ideas.id
+        INNER JOIN profiles
+        ON profiles.id = come_up_withs.profile_id
+    `;
     const created_at_sql = `
         SELECT
         ROW_NUMBER() OVER ( ORDER BY created_at DESC ) AS created_rownum, *
@@ -60,7 +69,13 @@ function list(searchText, order, fb_id=null, offset=0, limit=8) {
     `;
     const sql = `
     SELECT
-    i.id AS i_id, idea_type, skill, goal, like_number, liked
+        i.id AS i_id,
+        idea_type,
+        skill,
+        goal,
+        picture_url,
+        like_number,
+        liked
     FROM (
         ${created_at_sql}
     ) AS i
@@ -72,16 +87,18 @@ function list(searchText, order, fb_id=null, offset=0, limit=8) {
         ${like_number_sql}
     ) AS ln
     ON ln.id = i.id
+    LEFT JOIN (
+        ${author_icon_sql}
+    ) AS icon
+    ON icon.id = i.id
     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
     ORDER BY ${order=='hot' ? 'like_rownum ASC' : 'created_rownum ASC'}
-    LIMIT $4
+    LIMIT $(limit)
     `;
 
-    return db.task(t => {
-        return t.any(fb_2_pID_sql, {fb_id}).then(( [{id: p_id=0}={}]=[] ) => {
-            return t.any(sql, [p_id, searchText, offset, limit]);
-        });
-    });
+    return get_p_id.call(db, fb_id)
+        .then(x => { p_id = x; })
+        .then(() => db.any(sql, {p_id, searchText, offset, limit}));
 }
 
 function show (i_id, fb_id) {
