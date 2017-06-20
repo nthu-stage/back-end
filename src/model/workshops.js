@@ -105,7 +105,7 @@ function list(searchText, stateFilter, offset=0, limit=8) {
         where.push(`w.title ILIKE '%$(searchText:value)%'`);
     }
     if (offset) {
-        where.push(`rownum > $<offset>`);
+        where.push(`rownum > $(offset)`);
     }
 
     const get_workshop_list_sql = `
@@ -159,22 +159,21 @@ function list(searchText, stateFilter, offset=0, limit=8) {
     }
 
     return db.tx(t => {
-        return t.none(update_unreached_sql, {now})
-            .then(() => {
-                return t.any(get_workshop_list_sql, {
-                    searchText,
-                    stateFilter,
-                    offset,
-                    limit
-                });
-            }).then(workshops => {
-                for (let w of workshops) {
-                    attach_phase_on_workshop(w, now);
-                }
-                return workshops
-                    .filter(state_filter_predicate)
-                    .map(adapter);
+        return t.none(update_unreached_sql, {now}).then(() => {
+            return t.any(get_workshop_list_sql, {
+                searchText,
+                stateFilter,
+                offset,
+                limit
             });
+        }).then(workshops => {
+            for (let w of workshops) {
+                attach_phase_on_workshop(w, now);
+            }
+            return workshops
+                .filter(state_filter_predicate)
+                .map(adapter);
+        });
     });
 }
 
@@ -277,6 +276,7 @@ function show(w_id, fb_id) {
 }
 
 function attend(w_id, fb_id) {
+
     var p_id;
     const now=Date.now();
 
@@ -335,54 +335,38 @@ function attend(w_id, fb_id) {
         GROUP BY workshops.id;
     `;
 
-    function source(index, data, delay) {
-        switch (index) {
-            case 0: {
-                return this.none(update_unreached_sql, {now});
-            }
-            case 1: {
-                // let p_id = data;
-                return this
-                    .one(get_workshop_sql, {w_id, p_id})
-                    .then(workshop => {
-                        attach_phase_on_workshop(workshop, now);
-                        prop_list = ["attendees_number", "start_datetime", "end_datetime",
-                            "deadline", "pre_deadline"];
-                        for (let prop of prop_list) {
-                            workshop[prop] = (+ workshop[prop]);
-                        }
-                        delete workshop.state;
-                        return workshop;
-                    });
-            }
-            case 2: {
-                let workshop = data;
-                if (workshop.phase == 'investigating' || workshop.phase == 'reached') {
-                    return this.none(toggle_attendSQL, {w_id, p_id}).then(() => null);
-                } else if (workshop.phase == 'full' && workshop.attended) {
-                    return this.none(cancel_attend_sql, {w_id, p_id}).then(() => null);
+    return db.tx(t => {
+        return get_p_id.call(t, fb_id, {required: true}).then(x => {
+            p_id = x;
+        }).then(() => {
+            return t.none(update_unreached_sql, {now});
+        }).then(() => {
+            return t.one(get_workshop_sql, {w_id, p_id}).then(workshop => {
+                attach_phase_on_workshop(workshop, now);
+                prop_list = ["attendees_number", "start_datetime", "end_datetime",
+                    "deadline", "pre_deadline"];
+                for (let prop of prop_list) {
+                    workshop[prop] = (+ workshop[prop]);
                 }
-                return null;
+                delete workshop.state;
+                return workshop;
+            });
+        }).then(workshop => {
+            if (workshop.phase == 'investigating' || workshop.phase == 'reached') {
+                return t.none(toggle_attendSQL, {w_id, p_id});
+            } else if (workshop.phase == 'full' && workshop.attended) {
+                return t.none(cancel_attend_sql, {w_id, p_id});
             }
-            case 3: {
-                return this.one(get_attendees_number_sql, {w_id});
-            }
-            case 4: {
-                const {attendees_number} = data;
-                return this.none(update_reached_sql, {attendees_number}).then(() => null);
-            }
-            case 5: {
-                return this.one(get_attended_sql, {w_id, p_id});
-            }
-        }
-    }
+            return null;
+        }).then(() => {
+            return t.one(get_attendees_number_sql, {w_id});
+        }).then(({attendees_number}) => {
+            return t.none(update_reached_sql, {attendees_number});
+        }).then(() => {
+            return t.one(get_attended_sql, {w_id, p_id});
+        });
+    });
 
-    return get_p_id.call(db, fb_id, {required: true})
-        .then(x => { p_id = x; })
-        .then(() => db.tx(t => t.sequence(source, {track: true})))
-        .then(data => data.slice(-1)[0])
-        .then(workshop => adapter(workshop))
-        .catch(err => { throw err.error; });
 }
 
 // attendees (dashboard)
