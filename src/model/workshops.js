@@ -145,7 +145,7 @@ function list(searchText, stateFilter, offset=0, limit=8) {
       w.state,
       w.rownum
     ORDER BY rownum ASC
-    LIMIT $<limit>
+    LIMIT $(limit)
     `;
 
     function state_filter_predicate(workshop) {
@@ -158,30 +158,24 @@ function list(searchText, stateFilter, offset=0, limit=8) {
         }
     }
 
-    function source(index, data, delay) {
-        const now=Date.now();
-        switch (index) {
-            case 0: {
-                return this.none(update_unreached_sql, {now});
-            }
-            case 1: {
-                return this.any(get_workshop_list_sql, {searchText, stateFilter, offset, limit});
-            }
-            case 2: {
-                let workshops = data;
+    return db.tx(t => {
+        return t.none(update_unreached_sql, {now})
+            .then(() => {
+                return t.any(get_workshop_list_sql, {
+                    searchText,
+                    stateFilter,
+                    offset,
+                    limit
+                });
+            }).then(workshops => {
                 for (let w of workshops) {
                     attach_phase_on_workshop(w, now);
                 }
-                return workshops.filter(state_filter_predicate);
-            }
-        }
-    }
-
-    return db
-        .tx(t => t.sequence(source, {track: true}))
-        .then(data => data.slice(-1)[0])
-        .then(ws => ws.map(adapter))
-        .catch(err => { throw err.error; });
+                return workshops
+                    .filter(state_filter_predicate)
+                    .map(adapter);
+            });
+    });
 }
 
 function propose (fb_id, newWorkshopObj) {
@@ -189,36 +183,27 @@ function propose (fb_id, newWorkshopObj) {
 
     var profile_id;
 
-    function source(index, data, delay) {
-        switch (index) {
-            case 0: {
-                // insert new workshop
+    return db.tx(t => {
+        return get_p_id.call(t, fb_id).then(x => {
+            profile_id = x;
+        }).then(() => {
+            // insert new workshop
 
-                // manually setting field
-                newWorkshopObj.state = 'judging';
-                newWorkshopObj.pre_deadline = newWorkshopObj.deadline;
+            // manually setting field
+            newWorkshopObj.state = 'judging';
+            newWorkshopObj.pre_deadline = newWorkshopObj.deadline;
 
-                let sql = pgp.helpers.insert(newWorkshopObj, null, 'workshops');
-                sql += ' RETURNING workshops.id AS w_id;';
-                return this.one(sql);
-            }
-            case 1: {
-                // insert new propose
-                const {w_id: workshop_id} = data;
-                let newProposeObj = {workshop_id, profile_id};
-                let sql = pgp.helpers.insert(newProposeObj, null, 'proposes');
-                sql += ' RETURNING workshop_id AS w_id;';
-                return this.one(sql);
-            }
-        }
-    }
-
-
-    return get_p_id.call(db, fb_id)
-        .then(x => { profile_id = x; })
-        .then(() => db.tx(t => t.sequence(source, {track: true})))
-        .then(data => data.slice(-1)[0])
-        .catch(err => { throw err.error; });
+            let sql = pgp.helpers.insert(newWorkshopObj, null, 'workshops');
+            sql += ' RETURNING workshops.id AS w_id;';
+            return t.one(sql);
+        }).then(({w_id: workshop_id}) => {
+            // insert new propose
+            let newProposeObj = {workshop_id, profile_id};
+            let sql = pgp.helpers.insert(newProposeObj, null, 'proposes');
+            sql += ' RETURNING workshop_id AS w_id;';
+            return t.one(sql);
+        });
+    });
 }
 
 function show(w_id, fb_id) {
