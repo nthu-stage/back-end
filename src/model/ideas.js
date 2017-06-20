@@ -155,7 +155,7 @@ function show (i_id, fb_id) {
                     });
                 }
                 var ideas = this.one(ideas_sql, {i_id, p_id});
-                var most_avai_time = this
+                var mostAvaiTime = this
                     .any(schedules_sql, {i_id})
                     .then(schedules => schedules
                             .map(x => JSON.parse(x.available_time))
@@ -166,11 +166,11 @@ function show (i_id, fb_id) {
                 var friends = get_fb_friends
                     .call(this, fb_id)
                     .then(friends => this.any(idea_friends_sql, {friends: query_values(friends)}));
-                return this.batch([ideas, most_avai_time, friends]);
+                return this.batch([ideas, mostAvaiTime, friends]);
             }
             case 1: {
-                let [idea, most_avai_time, friends] = data;
-                idea.most_avai_time = most_avai_time;
+                let [idea, mostAvaiTime, friends] = data;
+                idea.mostAvaiTime = mostAvaiTime;
                 idea.friends = friends;
                 return idea;
             }
