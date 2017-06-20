@@ -22,7 +22,7 @@ function list(fb_id) {
         return +now.setDate(now.getDate() - n);
     }
 
-    function news_wrapper (single_news) {
+    function adapter (single_news) {
         single_news.created_at = +single_news.created_at;
         return single_news;
     }
@@ -108,27 +108,16 @@ function list(fb_id) {
     ORDER BY created_at DESC
     `;
 
-    function source(index, data, delay) {
-        // console.log(`source(${index}, ${JSON.stringify(data)})`);
-        switch (index) {
-            case 0: {
-                return get_fb_friends.call(this, fb_id);
-            }
-            case 1: {
-                const friends = data;
-                return this.any(sql, {
+    return db.tx(t => {
+        return get_fb_friends
+            .call(t, fb_id)
+            .then(friends => {
+                return t.any(sql, {
                     friends: query_values(friends),
                     from: n_days_ago(7)
                 });
-            }
-        }
-    }
-
-    return db
-        .tx(t => t.sequence(source, {track: true}))
-        .then(data => data.slice(-1)[0])
-        .then(news => news.map(news_wrapper))
-        .catch(err => { throw err.error; });
+            }).then(news => news.map(adapter));
+    });
 }
 
 module.exports = {
