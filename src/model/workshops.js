@@ -147,13 +147,14 @@ function list(searchText, stateFilter, offset=0, limit=8) {
     ORDER BY rownum ASC
     LIMIT $<limit>
     `;
+
     function state_filter_predicate(workshop) {
         switch (stateFilter) {
             case "0":   return false;
-            case "1":   return w.state=='reached';
-            case "2":   return w.state=='judge_ac';
+            case "1":   return workshop.state=='reached';
+            case "2":   return workshop.state=='judge_ac';
             case "all": return true; // TODO: remove this when production
-            default:    return (w.state=='reached') || (w.state=='judge_ac');
+            default:    return (workshop.state=='reached') || (workshop.state=='judge_ac');
         }
     }
 
