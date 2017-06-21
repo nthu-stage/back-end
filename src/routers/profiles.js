@@ -85,7 +85,7 @@ router.put('/profile', (req, res, next) => {
                 .then(new_ => { res.json(JSON.parse(new_.available_time)); })
                 .catch(next);
             break;
-        case 'pushExpoPushToken':
+        case 'expoPushToken':
             const {expoPushToken} = req.body;
             if (!expoPushToken) {
                 const err = new Error('expect expoPushToken in request body.');
