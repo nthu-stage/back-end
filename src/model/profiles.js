@@ -221,9 +221,31 @@ function updateEmail(fb_id, email) {
     });
 }
 
+function updateExpoPushToken (fb_id, expo_push_token) {
+
+    const sql = `
+    UPDATE profiles
+    SET expo_push_token=$(expo_push_token)
+    WHERE id=$(p_id)
+    `;
+
+    return db.task(t => {
+        return t.any(fb_2_pID_sql, {fb_id})
+            .then( ([{id: p_id}] = [{id: 0}]) => {
+                if (p_id===0) {
+                    const err=new Error('Cannot found this fb user in database.');
+                    err.status=400;
+                    throw err;
+                }
+                return t.none(sql, {p_id, expo_push_token});
+            });
+    });
+}
+
 module.exports = {
     regOrLogin,
     show,
     updateAvailableTime,
     updateEmail,
+    updateExpoPushToken,
 };

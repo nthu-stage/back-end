@@ -19,19 +19,20 @@ SELECT COUNT(*) AS is_author FROM come_up_withs WHERE profile_id=$(p_id) AND ide
 function list(searchText, order, fb_id=null, offset=0, limit=8) {
     // [TODO]: search priority skill > goal.
     var where = [];
-    const search = ['skill', 'goal'].map(s => {
-        return `${s} ILIKE '%$(searchText:value)%'`;
-    });
-    if (searchText)
-        where.push(search.join(' OR '));
-    if (offset) {
-        if (order === 'hot')
-            where.push(`$(offset) < like_rownum`);
-        else
-            where.push(`$(offset) < created_rownum`);
+    if (searchText) {
+        where.push(
+            ['skill', 'goal'].map(x =>
+                `${x} ILIKE '%$(searchText:value)%'`
+            ).join(' OR ')
+        );
     }
 
-    const user_likes_sql = `SELECT * FROM likes WHERE likes.profile_id = $(p_id) `;
+    function adapter (idea) {
+        idea.liked = (idea.liked === "1");
+        idea.like_number = (+ idea.like_number);
+        return idea;
+    }
+
     const author_icon_sql = `
         SELECT
             ideas.id AS id,
@@ -46,13 +47,16 @@ function list(searchText, order, fb_id=null, offset=0, limit=8) {
         SELECT
         ROW_NUMBER() OVER ( ORDER BY created_at DESC ) AS created_rownum, *
         FROM ideas
+        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
     `;
     const liked_sql = `
     SELECT
     ideas.id AS id, COUNT(user_likes.profile_id) AS liked
     FROM ideas
     LEFT JOIN (
-        ${user_likes_sql}
+        SELECT *
+        FROM likes
+        WHERE profile_id = $(p_id)
     ) AS user_likes
     ON user_likes.idea_id = id
     GROUP BY ideas.id
@@ -64,6 +68,7 @@ function list(searchText, order, fb_id=null, offset=0, limit=8) {
     FROM ideas
     LEFT JOIN likes
     ON likes.idea_id = ideas.id
+    ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
     GROUP BY ideas.id
     ORDER BY ideas.id
     `;
@@ -91,14 +96,21 @@ function list(searchText, order, fb_id=null, offset=0, limit=8) {
         ${author_icon_sql}
     ) AS icon
     ON icon.id = i.id
-    ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-    ORDER BY ${order=='hot' ? 'like_rownum ASC' : 'created_rownum ASC'}
+    WHERE    ${order === 'hot' ? 'like_rownum'     : 'created_rownum'} > $(offset)
+    ORDER BY ${order === 'hot' ? 'like_rownum ASC' : 'created_rownum ASC'}
     LIMIT $(limit)
     `;
 
-    return get_p_id.call(db, fb_id)
-        .then(x => { p_id = x; })
-        .then(() => db.any(sql, {p_id, searchText, offset, limit}));
+    return db.task(t => {
+        return get_p_id.call(t, fb_id).then(x => {
+            p_id = x;
+        }).then(() => {
+            return t.any(sql, {p_id, searchText, offset, limit});
+        }).then(ideas =>
+            ideas.map(adapter)
+        );
+    });
+
 }
 
 function show (i_id, fb_id) {
