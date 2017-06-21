@@ -6,6 +6,7 @@ if (!global.db) {
 
 // common sql
 const fb_2_pID_sql = `SELECT id FROM profiles WHERE fb_userid=$(fb_id)`;
+const APP_ID = 1812105742383573;
 
 function regOrLogin(fb_userid, access_token, name, email, picture_url) {
 
@@ -13,14 +14,10 @@ function regOrLogin(fb_userid, access_token, name, email, picture_url) {
         return FB
             .api('/oauth/access_token', {
                 grant_type: 'fb_exchange_token',
-                client_id: 1812105742383573,
+                client_id: APP_ID,
                 client_secret: process.env.FB_APP_STAGE_SECRET,
                 fb_exchange_token: access_token
             }).then(res => {
-                console.log('before: '+access_token);
-                console.log('after:  '+res.access_token);
-                console.log('res: '+JSON.stringify(res));
-                console.log('expires: '+res.expires_in);
                 return res.access_token;
             });
     }
@@ -67,23 +64,23 @@ function regOrLogin(fb_userid, access_token, name, email, picture_url) {
     $do$;
     `;
 
-    function source(index, data, delay) {
-        switch (index) {
-            case 0: {
-                return this.none(create_or_update_profile_sql,
-                    {name, email, fb_userid, access_token, picture_url});
-            }
-            case 1: {
-                return this.one(get_p_id_sql, {fb_userid});
-            }
-        }
-    }
+    return db.task(t => {
+        return transform_long_lived_token.call(t, access_token)
+            .then(long => {
+                access_token = long;
+            }).then(() =>
+                t.none(create_or_update_profile_sql, {
+                    name,
+                    email,
+                    fb_userid,
+                    access_token,
+                    picture_url
+                })
+            ).then(() =>
+                t.one(get_p_id_sql, {fb_userid})
+            );
+    });
 
-    return transform_long_lived_token.call(this, access_token)
-        .then(long => { access_token = long; })
-        .then(() => db.tx(t => t.sequence(source, {track: true})))
-        .then(data => data.slice(-1)[0])
-        .catch(err => { throw err.error; });
 }
 
 

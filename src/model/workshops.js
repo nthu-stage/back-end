@@ -11,6 +11,9 @@ const {
     query_values,
 } = require('../fn.js');
 
+const Expo = require('exponent-server-sdk');
+let expo = new Expo();
+
 // none(now) -> void
 const update_unreached_sql = `
 UPDATE workshops
@@ -99,6 +102,30 @@ function adapter(workshop) {
 
 function list(searchText, stateFilter, offset=0, limit=8) {
     const now = Date.now();
+    let state_whitelists;
+    switch (stateFilter) {
+        case "1":
+            state_whitelists = ['reached'];
+            break;
+        case "2":
+            state_whitelists = ['judge_ac'];
+            break;
+        case "3":
+            state_whitelists = ['reached', 'judge_ac'];
+            break;
+        case "all":
+            state_whitelists = [
+                'judging',
+                'judge_na',
+                'judge_ac',
+                'reached',
+                'unreached'
+            ];
+            break;
+        default:
+            // "0" or the others
+            state_whitelists = [];
+    }
 
     var where = [];
     if (searchText) {
@@ -148,59 +175,23 @@ function list(searchText, stateFilter, offset=0, limit=8) {
     LIMIT $(limit)
     `;
 
-    function source(index, data, delay) {
-        switch (index) {
-            case 0: {
-                return this.none(update_unreached_sql, {now});
+    return db.task(t => {
+        return t.none(update_unreached_sql, {now}).then(() => {
+            return t.any(get_workshop_list_sql, {
+                searchText,
+                stateFilter,
+                offset,
+                limit,
+                state_whitelists: query_values(state_whitelists)
+            });
+        }).then(workshops => {
+            for (let w of workshops) {
+                attach_phase_on_workshop(w, now);
             }
-            case 1: {
-                let state_whitelists;
-                switch (stateFilter) {
-                    case "1":
-                        state_whitelists = ['reached'];
-                        break;
-                    case "2":
-                        state_whitelists = ['judge_ac'];
-                        break;
-                    case "3":
-                        state_whitelists = ['reached', 'judge_ac'];
-                        break;
-                    case "all":
-                        state_whitelists = [
-                            'judging',
-                            'judge_na',
-                            'judge_ac',
-                            'reached',
-                            'unreached'
-                        ];
-                        break;
-                    default:
-                        // "0" or the others
-                        state_whitelists = [];
-                }
-                return this.any(get_workshop_list_sql, {
-                    searchText,
-                    stateFilter,
-                    offset,
-                    limit,
-                    state_whitelists: query_values(state_whitelists)
-                });
-            }
-            case 2: {
-                let workshops = data;
-                for (let w of workshops) {
-                    attach_phase_on_workshop(w, now);
-                }
-                return workshops;
-            }
-        }
-    }
+            return workshops.map(adapter);
+        });
+    });
 
-    return db
-        .tx(t => t.sequence(source, {track: true}))
-        .then(data => data.slice(-1)[0])
-        .then(ws => ws.map(adapter))
-        .catch(err => { throw err.error; });
 }
 
 function propose (fb_id, newWorkshopObj) {
@@ -208,40 +199,32 @@ function propose (fb_id, newWorkshopObj) {
 
     var profile_id;
 
-    function source(index, data, delay) {
-        switch (index) {
-            case 0: {
-                // insert new workshop
+    return db.tx(t => {
+        return get_p_id.call(t, fb_id).then(x => {
+            profile_id = x;
+        }).then(() => {
+            // insert new workshop
 
-                // manually setting field
-                newWorkshopObj.state = 'judging';
-                newWorkshopObj.pre_deadline = newWorkshopObj.deadline;
+            // manually setting field
+            newWorkshopObj.state = 'judging';
+            newWorkshopObj.pre_deadline = newWorkshopObj.deadline;
 
-                let sql = pgp.helpers.insert(newWorkshopObj, null, 'workshops');
-                sql += ' RETURNING workshops.id AS w_id;';
-                return this.one(sql);
-            }
-            case 1: {
-                // insert new propose
-                const {w_id: workshop_id} = data;
-                let newProposeObj = {workshop_id, profile_id};
-                let sql = pgp.helpers.insert(newProposeObj, null, 'proposes');
-                sql += ' RETURNING workshop_id AS w_id;';
-                return this.one(sql);
-            }
-        }
-    }
-
-
-    return get_p_id.call(db, fb_id)
-        .then(x => { profile_id = x; })
-        .then(() => db.tx(t => t.sequence(source, {track: true})))
-        .then(data => data.slice(-1)[0])
-        .catch(err => { throw err.error; });
+            let sql = pgp.helpers.insert(newWorkshopObj, null, 'workshops');
+            sql += ' RETURNING workshops.id AS w_id;';
+            return t.one(sql);
+        }).then(({w_id: workshop_id}) => {
+            // insert new propose
+            let newProposeObj = {workshop_id, profile_id};
+            let sql = pgp.helpers.insert(newProposeObj, null, 'proposes');
+            sql += ' RETURNING workshop_id AS w_id;';
+            return t.one(sql);
+        });
+    });
 }
 
 function show(w_id, fb_id) {
     var p_id;
+    const now=Date.now();
 
     // one(w_id) -> {workshop_id, name}
     const get_proposer_sql = `
@@ -293,33 +276,24 @@ function show(w_id, fb_id) {
         proposer.picture_url;
     `;
 
-    function source(index, data, delay) {
-        const now=Date.now();
-        switch (index) {
-            case 0: {
-                return this.none(update_unreached_sql, {now});
-            }
-            case 1: {
-                return this.one(get_workshop_sql, {w_id, p_id});
-            }
-            case 2: {
-                let workshop = data;
-                attach_phase_on_workshop(workshop, now);
-                delete workshop.state;
-                return workshop;
-            }
-        }
-    }
+    return db.task(t => {
+        return get_p_id.call(t, fb_id).then(x => {
+            p_id = x;
+        }).then(() => {
+            return t.none(update_unreached_sql, {now});
+        }).then(() => {
+            return t.one(get_workshop_sql, {w_id, p_id});
+        }).then(workshop => {
+            attach_phase_on_workshop(workshop, now);
+            delete workshop.state;
+            return adapter(workshop);
+        });
+    });
 
-    return get_p_id.call(db, fb_id)
-        .then(x => { p_id = x; })
-        .then(() => db.tx(t => t.sequence(source, {track: true})))
-        .then(data => data.slice(-1)[0])
-        .then(w => adapter(w))
-        .catch(err => { throw err.error; });
 }
 
 function attend(w_id, fb_id) {
+
     var p_id;
     const now=Date.now();
 
@@ -378,54 +352,70 @@ function attend(w_id, fb_id) {
         GROUP BY workshops.id;
     `;
 
-    function source(index, data, delay) {
-        switch (index) {
-            case 0: {
-                return this.none(update_unreached_sql, {now});
+    // one(w_id) -> {expo_push_token}
+    const get_author_expo_push_token_sql = `
+        SELECT expo_push_token
+        FROM profiles
+        INNER JOIN proposes
+        ON proposes.profile_id = profiles.id
+        WHERE workshop_id = $(w_id)
+    `;
+
+    return db.tx(t => {
+        return get_p_id.call(t, fb_id, {required: true}).then(x => {
+            p_id = x;
+        }).then(() => {
+            return t.none(update_unreached_sql, {now});
+        }).then(() => {
+            return t.one(get_workshop_sql, {w_id, p_id})
+                .then(workshop => {
+                    attach_phase_on_workshop(workshop, now);
+                    prop_list = ["attendees_number", "start_datetime", "end_datetime",
+                        "deadline", "pre_deadline"];
+                    for (let prop of prop_list) {
+                        workshop[prop] = (+ workshop[prop]);
+                    }
+                    delete workshop.state;
+                    return workshop;
+                });
+        }).then(workshop => {
+            if (workshop.phase == 'investigating' || workshop.phase == 'reached') {
+                return t.none(toggle_attendSQL, {w_id, p_id});
+            } else if (workshop.phase == 'full' && workshop.attended) {
+                return t.none(cancel_attend_sql, {w_id, p_id});
             }
-            case 1: {
-                // let p_id = data;
-                return this
-                    .one(get_workshop_sql, {w_id, p_id})
-                    .then(workshop => {
-                        attach_phase_on_workshop(workshop, now);
-                        prop_list = ["attendees_number", "start_datetime", "end_datetime",
-                            "deadline", "pre_deadline"];
-                        for (let prop of prop_list) {
-                            workshop[prop] = (+ workshop[prop]);
-                        }
-                        delete workshop.state;
-                        return workshop;
+            return null;
+        }).then(() => {
+            return t.one(get_author_expo_push_token_sql, {w_id});
+        }).then(({expo_push_token}) => {
+                try {
+                    let receipts;
+                    expo.sendPushNotificationsAsync([{
+                        to: expo_push_token,
+                        sound: 'default',
+                        body: 'This is a test notification',
+                        data: {
+                            value: '123456789'
+                        },
+                    }]).then(x => {
+                        console.log('x: '+JSON.stringify(x));
+                        receipts = x;
+                    }).catch(err => {
+                        console.log('err: '+JSON.stringify(err));
                     });
-            }
-            case 2: {
-                let workshop = data;
-                if (workshop.phase == 'investigating' || workshop.phase == 'reached') {
-                    return this.none(toggle_attendSQL, {w_id, p_id}).then(() => null);
-                } else if (workshop.phase == 'full' && workshop.attended) {
-                    return this.none(cancel_attend_sql, {w_id, p_id}).then(() => null);
+                } catch (error) {
+                    console.log(error);
                 }
                 return null;
-            }
-            case 3: {
-                return this.one(get_attendees_number_sql, {w_id});
-            }
-            case 4: {
-                const {attendees_number} = data;
-                return this.none(update_reached_sql, {attendees_number}).then(() => null);
-            }
-            case 5: {
-                return this.one(get_attended_sql, {w_id, p_id});
-            }
-        }
-    }
+        }).then(() => {
+            return t.one(get_attendees_number_sql, {w_id});
+        }).then(({attendees_number}) => {
+            return t.none(update_reached_sql, {attendees_number});
+        }).then(() => {
+            return t.one(get_attended_sql, {w_id, p_id});
+        });
+    });
 
-    return get_p_id.call(db, fb_id, {required: true})
-        .then(x => { p_id = x; })
-        .then(() => db.tx(t => t.sequence(source, {track: true})))
-        .then(data => data.slice(-1)[0])
-        .then(workshop => adapter(workshop))
-        .catch(err => { throw err.error; });
 }
 
 // attendees (dashboard)
@@ -441,23 +431,16 @@ function attendees(w_id, fb_id) {
     WHERE workshop_id=$(w_id)
     `;
 
-    function source(index, data, delay) {
-        const now=Date.now();
-        switch (index) {
-            case 0: {
-                return check_workshop_author.call(this, w_id, p_id);
-            }
-            case 1: {
-                return this.any(sql, {w_id});
-            }
-        }
-    }
+    return db.task(t => {
+        return get_p_id.call(t, fb_id, {required: true}).then(x => {
+            p_id = x;
+        }).then(() => {
+            return check_workshop_author.call(t, w_id, p_id);
+        }).then(() => {
+            return t.any(sql, {w_id});
+        });
+    });
 
-    return get_p_id.call(db, fb_id, {required: true})
-        .then(x => { p_id = x; })
-        .then(() => db.tx(t => t.sequence(source, {track: true})))
-        .then(data => data.slice(-1)[0])
-        .catch(err => { throw err.error; });
 }
 
 function delete_(w_id, fb_id) {

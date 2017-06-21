@@ -122,6 +122,21 @@ function show (i_id, fb_id) {
         return idea;
     }
 
+    function schedule_addition (xs, ys) {
+        return xs.map((x, index) => ({
+            time: index,
+            people: x.people + ys[index].people
+        }));
+    }
+
+    let empty_schedule=[];
+    for (let i=0; i<21; i++) {
+        empty_schedule.push({
+            time: i,
+            people: 0
+        });
+    }
+
     const idea_friends_sql = `
     SELECT profiles.id AS p_id, name, picture_url
     FROM profiles
@@ -171,21 +186,8 @@ function show (i_id, fb_id) {
     `;
 
     function source(index, data, delay) {
-        function schedule_addition (xs, ys) {
-            return xs.map((x, index) => ({
-                time: index,
-                people: x.people + ys[index].people
-            }));
-        }
         switch (index) {
             case 0: {
-                let empty_schedule=[];
-                for (let i=0; i<21; i++) {
-                    empty_schedule.push({
-                        time: i,
-                        people: 0
-                    });
-                }
                 var ideas = this.one(ideas_sql, {i_id, p_id});
                 var mostAvaiTime = this
                     .any(schedules_sql, {i_id})
@@ -212,12 +214,30 @@ function show (i_id, fb_id) {
         }
     }
 
-    return get_p_id.call(db, fb_id)
-        .then(x => { p_id = x; })
-        .then(() => db.tx(t => t.sequence(source, {track: true})))
-        .then(data => data.slice(-1)[0])
-        .then(idea => adapter(idea))
-        .catch(err => { throw err.error; });
+    return db.tx(t => {
+        return get_p_id.call(t, fb_id).then(x => {
+            p_id = x;
+        }).then(() => {
+            var ideas = t.one(ideas_sql, {i_id, p_id});
+            var mostAvaiTime = t
+                .any(schedules_sql, {i_id})
+                .then(schedules => schedules
+                    .map(x => JSON.parse(x.available_time))
+                    .map(xs => xs.map((x, index) => ({time: index, people: x})))
+                    .reduce(schedule_addition, empty_schedule)
+                    .sort((a, b) => b.people - a.people)
+                    .slice(0, 5));
+            var friends = get_fb_friends
+                .call(t, fb_id)
+                .then(friends => t.any(idea_friends_sql, {friends: query_values(friends)}));
+            return t.batch([ideas, mostAvaiTime, friends]);
+        }).then(([idea, mostAvaiTime, friends]) => {
+            return adapter(Object.assign(idea, {
+                mostAvaiTime,
+                friends
+            }));
+        });
+    });
 }
 
 function comeUpWith (fb_id, idea_type, skill, goal, web_url, image_url) {
