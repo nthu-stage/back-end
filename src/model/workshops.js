@@ -355,16 +355,17 @@ function attend(w_id, fb_id) {
         }).then(() => {
             return t.none(update_unreached_sql, {now});
         }).then(() => {
-            return t.one(get_workshop_sql, {w_id, p_id}).then(workshop => {
-                attach_phase_on_workshop(workshop, now);
-                prop_list = ["attendees_number", "start_datetime", "end_datetime",
-                    "deadline", "pre_deadline"];
-                for (let prop of prop_list) {
-                    workshop[prop] = (+ workshop[prop]);
-                }
-                delete workshop.state;
-                return workshop;
-            });
+            return t.one(get_workshop_sql, {w_id, p_id})
+                .then(workshop => {
+                    attach_phase_on_workshop(workshop, now);
+                    prop_list = ["attendees_number", "start_datetime", "end_datetime",
+                        "deadline", "pre_deadline"];
+                    for (let prop of prop_list) {
+                        workshop[prop] = (+ workshop[prop]);
+                    }
+                    delete workshop.state;
+                    return workshop;
+                });
         }).then(workshop => {
             if (workshop.phase == 'investigating' || workshop.phase == 'reached') {
                 return t.none(toggle_attendSQL, {w_id, p_id});

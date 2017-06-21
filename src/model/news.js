@@ -109,15 +109,13 @@ function list(fb_id) {
     ORDER BY created_at DESC
     `;
 
-    return db.tx(t => {
-        return get_fb_friends
-            .call(t, fb_id)
-            .then(friends => {
-                return t.any(sql, {
-                    friends: query_values(friends),
-                    from: n_days_ago(7)
-                });
-            }).then(news => news.map(adapter));
+    return db.task(t => {
+        return get_fb_friends.call(t, fb_id).then(friends => {
+            return t.any(sql, {
+                friends: query_values(friends),
+                from: n_days_ago(7)
+            });
+        }).then(news => news.map(adapter));
     });
 }
 

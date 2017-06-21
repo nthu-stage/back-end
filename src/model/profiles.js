@@ -18,10 +18,6 @@ function regOrLogin(fb_userid, access_token, name, email, picture_url) {
                 client_secret: process.env.FB_APP_STAGE_SECRET,
                 fb_exchange_token: access_token
             }).then(res => {
-                console.log('before: '+access_token);
-                console.log('after:  '+res.access_token);
-                console.log('res: '+JSON.stringify(res));
-                console.log('expires: '+res.expires_in);
                 return res.access_token;
             });
     }
@@ -68,16 +64,21 @@ function regOrLogin(fb_userid, access_token, name, email, picture_url) {
     $do$;
     `;
 
-    return db.tx(t => {
+    return db.task(t => {
         return transform_long_lived_token.call(t, access_token)
-            .then(long => { access_token = long; })
-            .then(() => t.none(create_or_update_profile_sql, {
-                name,
-                email,
-                fb_userid,
-                access_token,
-                picture_url
-            })).then(() => t.one(get_p_id_sql, {fb_userid}));
+            .then(long => {
+                access_token = long;
+            }).then(() =>
+                t.none(create_or_update_profile_sql, {
+                    name,
+                    email,
+                    fb_userid,
+                    access_token,
+                    picture_url
+                })
+            ).then(() =>
+                t.one(get_p_id_sql, {fb_userid})
+            );
     });
 
 }
