@@ -64,7 +64,7 @@ router.put('/profile', (req, res, next) => {
         case 'email':
             const {email} = req.body;
             if (!email) {
-                const err = new Error('need email in request body');
+                const err = new Error('Expect email in request body.');
                 err.status = 401;
                 throw err;
             }
@@ -76,7 +76,7 @@ router.put('/profile', (req, res, next) => {
         case 'availableTime':
             const availableTime = req.body;
             if (!availableTime) {
-                const err = new Error('need available time in request body');
+                const err = new Error('Expect availableTime in request body.');
                 err.status = 401;
                 throw err;
             }
@@ -84,6 +84,17 @@ router.put('/profile', (req, res, next) => {
                 .updateAvailableTime(fb_id, availableTime)
                 .then(new_ => { res.json(JSON.parse(new_.available_time)); })
                 .catch(next);
+            break;
+        case 'pushExpoPushToken':
+            const {expoPushToken} = req.body;
+            if (!expoPushToken) {
+                const err = new Error('expect expoPushToken in request body.');
+                err.status = 401;
+                throw err;
+            }
+            profilesModel.updateExpoPushToken(fb_id, expoPushToken).then(() => {
+                res.sendStatus(200);
+            }).catch(next);
             break;
         default:
             const err = new Error('Unknown key to update');
