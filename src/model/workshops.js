@@ -396,23 +396,16 @@ function attendees(w_id, fb_id) {
     WHERE workshop_id=$(w_id)
     `;
 
-    function source(index, data, delay) {
-        const now=Date.now();
-        switch (index) {
-            case 0: {
-                return check_workshop_author.call(this, w_id, p_id);
-            }
-            case 1: {
-                return this.any(sql, {w_id});
-            }
-        }
-    }
+    return db.task(t => {
+        return get_p_id.call(t, fb_id, {required: true}).then(x => {
+            p_id = x;
+        }).then(() => {
+            return check_workshop_author.call(t, w_id, p_id);
+        }).then(() => {
+            return t.any(sql, {w_id});
+        });
+    });
 
-    return get_p_id.call(db, fb_id, {required: true})
-        .then(x => { p_id = x; })
-        .then(() => db.tx(t => t.sequence(source, {track: true})))
-        .then(data => data.slice(-1)[0])
-        .catch(err => { throw err.error; });
 }
 
 function delete_(w_id, fb_id) {
