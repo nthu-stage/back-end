@@ -15,6 +15,7 @@ CREATE TABLE profiles (
     email               text      NOT     NULL DEFAULT '',
     fb_userid           text      NOT     NULL DEFAULT '',
     access_token        text      NOT     NULL DEFAULT '',
+    expo_push_token     text      NOT     NULL DEFAULT '',
     picture_url         text      NOT     NULL DEFAULT '',
     available_time      text      NOT     NULL DEFAULT '[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]',
     authority           authority NOT     NULL DEFAULT 'user',
