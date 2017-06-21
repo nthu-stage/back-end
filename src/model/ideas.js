@@ -185,51 +185,23 @@ function show (i_id, fb_id) {
         profiles.name;
     `;
 
-    function source(index, data, delay) {
-        switch (index) {
-            case 0: {
-                var ideas = this.one(ideas_sql, {i_id, p_id});
-                var mostAvaiTime = this
-                    .any(schedules_sql, {i_id})
-                    .then(schedules => schedules
-                            .map(x => JSON.parse(x.available_time))
-                            .map(xs => xs.map((x, index) => ({time: index, people: x})))
-                            .reduce(schedule_addition, empty_schedule)
-                            .sort((a, b) => b.people - a.people)
-                            .slice(0, 5));
-                var friends = get_fb_friends
-                    .call(this, fb_id)
-                    .then(friends => this.any(idea_friends_sql, {
-                        friends: query_values(friends),
-                        i_id
-                    }));
-                return this.batch([ideas, mostAvaiTime, friends]);
-            }
-            case 1: {
-                let [idea, mostAvaiTime, friends] = data;
-                idea.mostAvaiTime = mostAvaiTime;
-                idea.friends = friends;
-                return idea;
-            }
-        }
-    }
-
     return db.tx(t => {
         return get_p_id.call(t, fb_id).then(x => {
             p_id = x;
         }).then(() => {
             var ideas = t.one(ideas_sql, {i_id, p_id});
-            var mostAvaiTime = t
-                .any(schedules_sql, {i_id})
+            var mostAvaiTime = t.any(schedules_sql, {i_id})
                 .then(schedules => schedules
                     .map(x => JSON.parse(x.available_time))
                     .map(xs => xs.map((x, index) => ({time: index, people: x})))
                     .reduce(schedule_addition, empty_schedule)
                     .sort((a, b) => b.people - a.people)
                     .slice(0, 5));
-            var friends = get_fb_friends
-                .call(t, fb_id)
-                .then(friends => t.any(idea_friends_sql, {friends: query_values(friends)}));
+            var friends = get_fb_friends.call(t, fb_id)
+                .then(friends => t.any(idea_friends_sql, {
+                    friends: query_values(friends),
+                    i_id
+                }));
             return t.batch([ideas, mostAvaiTime, friends]);
         }).then(([idea, mostAvaiTime, friends]) => {
             return adapter(Object.assign(idea, {
