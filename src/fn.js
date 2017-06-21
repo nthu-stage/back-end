@@ -70,7 +70,7 @@ function get_fb_friends (fb_id, options = {required: false}) {
         }).then(friends => friends.filter(x => (x !== 0)));
 }
 
-function query_values (ids) {
+function query_values (ids, opt={default: 0}) {
     // passing in query parameter
     // in sql statement, use ${values:raw}
     // notice that ids must be UNIQUE
@@ -80,7 +80,7 @@ function query_values (ids) {
 
     if (ids.length === 0) {
         // return an unvalid id, force where select nothing
-        return '(0)';
+        return `(${opt.default})`;
     }
     let values = {};
     for (let id of ids) {

@@ -158,7 +158,7 @@ function list(searchText, stateFilter, offset=0, limit=8) {
         }
     }
 
-    return db.tx(t => {
+    return db.task(t => {
         return t.none(update_unreached_sql, {now}).then(() => {
             return t.any(get_workshop_list_sql, {
                 searchText,
@@ -259,7 +259,7 @@ function show(w_id, fb_id) {
         proposer.picture_url;
     `;
 
-    return db.tx(t => {
+    return db.task(t => {
         return get_p_id.call(t, fb_id).then(x => {
             p_id = x;
         }).then(() => {
