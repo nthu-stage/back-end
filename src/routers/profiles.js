@@ -101,6 +101,6 @@ router.put('/profile', (req, res, next) => {
             err.status = 400;
             throw err;
     }
-})
+});
 
 module.exports = router;

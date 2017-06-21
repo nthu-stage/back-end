@@ -11,6 +11,9 @@ const {
     query_values,
 } = require('../fn.js');
 
+const Expo = require('exponent-server-sdk');
+let expo = new Expo();
+
 // none(now) -> void
 const update_unreached_sql = `
 UPDATE workshops
@@ -349,6 +352,15 @@ function attend(w_id, fb_id) {
         GROUP BY workshops.id;
     `;
 
+    // one(w_id) -> {expo_push_token}
+    const get_author_expo_push_token_sql = `
+        SELECT expo_push_token
+        FROM profiles
+        INNER JOIN proposes
+        ON proposes.profile_id = profiles.id
+        WHERE workshop_id = $(w_id)
+    `;
+
     return db.tx(t => {
         return get_p_id.call(t, fb_id, {required: true}).then(x => {
             p_id = x;
@@ -373,6 +385,28 @@ function attend(w_id, fb_id) {
                 return t.none(cancel_attend_sql, {w_id, p_id});
             }
             return null;
+        }).then(() => {
+            return t.one(get_author_expo_push_token_sql, {w_id});
+        }).then(({expo_push_token}) => {
+                try {
+                    let receipts;
+                    expo.sendPushNotificationsAsync([{
+                        to: expo_push_token,
+                        sound: 'default',
+                        body: 'This is a test notification',
+                        data: {
+                            value: '123456789'
+                        },
+                    }]).then(x => {
+                        console.log('x: '+JSON.stringify(x));
+                        receipts = x;
+                    }).catch(err => {
+                        console.log('err: '+JSON.stringify(err));
+                    });
+                } catch (error) {
+                    console.log(error);
+                }
+                return null;
         }).then(() => {
             return t.one(get_attendees_number_sql, {w_id});
         }).then(({attendees_number}) => {
