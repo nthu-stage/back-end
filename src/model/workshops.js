@@ -8,6 +8,7 @@ const pgp = require('pg-promise')({
 });
 const {
     get_p_id,
+    query_values,
 } = require('../fn.js');
 
 // none(now) -> void
@@ -102,11 +103,9 @@ function list(searchText, stateFilter, offset=0, limit=8) {
     var where = [];
     if (searchText) {
         // [TODO]:  temporarialy only search title.
-        where.push(`w.title ILIKE '%$(searchText:value)%'`);
+        where.push(`title ILIKE '%$(searchText:value)%'`);
     }
-    if (offset) {
-        where.push(`rownum > $<offset>`);
-    }
+    where.push(`state in $(state_whitelists:raw)`);
 
     const get_workshop_list_sql = `
     SELECT
@@ -126,10 +125,11 @@ function list(searchText, stateFilter, offset=0, limit=8) {
     FROM (
         SELECT ROW_NUMBER() OVER ( ORDER BY workshops.deadline ASC ) AS rownum, *
         FROM workshops
+        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
     ) AS w
     LEFT JOIN attends AS a
     ON w.id = a.workshop_id
-    ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+    WHERE rownum > $(offset)
     GROUP BY
       w.id,
       w.image_url,
@@ -145,34 +145,53 @@ function list(searchText, stateFilter, offset=0, limit=8) {
       w.state,
       w.rownum
     ORDER BY rownum ASC
-    LIMIT $<limit>
+    LIMIT $(limit)
     `;
 
-    function state_filter_predicate(workshop) {
-        switch (stateFilter) {
-            case "0":   return false;
-            case "1":   return workshop.state=='reached';
-            case "2":   return workshop.state=='judge_ac';
-            case "all": return true; // TODO: remove this when production
-            default:    return (workshop.state=='reached') || (workshop.state=='judge_ac');
-        }
-    }
-
     function source(index, data, delay) {
-        const now=Date.now();
         switch (index) {
             case 0: {
                 return this.none(update_unreached_sql, {now});
             }
             case 1: {
-                return this.any(get_workshop_list_sql, {searchText, stateFilter, offset, limit});
+                let state_whitelists;
+                switch (stateFilter) {
+                    case "1":
+                        state_whitelists = ['reached'];
+                        break;
+                    case "2":
+                        state_whitelists = ['judge_ac'];
+                        break;
+                    case "3":
+                        state_whitelists = ['reached', 'judge_ac'];
+                        break;
+                    case "all":
+                        state_whitelists = [
+                            'judging',
+                            'judge_na',
+                            'judge_ac',
+                            'reached',
+                            'unreached'
+                        ];
+                        break;
+                    default:
+                        // "0" or the others
+                        state_whitelists = [];
+                }
+                return this.any(get_workshop_list_sql, {
+                    searchText,
+                    stateFilter,
+                    offset,
+                    limit,
+                    state_whitelists: query_values(state_whitelists)
+                });
             }
             case 2: {
                 let workshops = data;
                 for (let w of workshops) {
                     attach_phase_on_workshop(w, now);
                 }
-                return workshops.filter(state_filter_predicate);
+                return workshops;
             }
         }
     }
