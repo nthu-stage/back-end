@@ -395,7 +395,8 @@ function attend(w_id, fb_id) {
                         sound: 'default',
                         body: 'This is a test notification',
                         data: {
-                            value: '123456789'
+                            title: 'me',
+                            body: 'cool'
                         },
                     }]).then(x => {
                         console.log('x: '+JSON.stringify(x));
