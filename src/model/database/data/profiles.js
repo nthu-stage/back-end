@@ -34,7 +34,7 @@ var datas = [
         name: '林軒毅',
         email: 'a7633082@yahoo.com.tw',
         fb_userid: '1194279457367537',
-        picture_url: 'https://scontent.xx.fbcdn.net/v/t1.0-1/p50x50/18222362_1188800274582122_8342935289938813421_n.jpg?oh=53dda8b0dff4ed821f14d0f0b59f1d51&oe=59CB6B41',
+        picture_url: 'https://scontent.xx.fbcdn.net/v/t1.0-1/p200x200/18222362_1188800274582122_8342935289938813421_n.jpg?oh=f17f6c5f8e4224a896c04bfb60695c7e&oe=59D56634',
         created_at: (+ new Date(2017, 5, 19))
     }, {
         name: 'Charlie Liu',

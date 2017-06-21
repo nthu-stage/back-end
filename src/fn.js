@@ -80,7 +80,7 @@ function query_values (ids, opt={default: 0}) {
 
     if (ids.length === 0) {
         // return an unvalid id, force where select nothing
-        return `(${opt.default})`;
+        return '(NULL)';
     }
     let values = {};
     for (let id of ids) {

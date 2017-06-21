@@ -126,9 +126,12 @@ function show (i_id, fb_id) {
     }
 
     const idea_friends_sql = `
-    SELECT id AS p_id, name, picture_url
+    SELECT profiles.id AS p_id, name, picture_url
     FROM profiles
-    WHERE id IN $(friends:raw)
+    INNER JOIN likes
+    ON likes.profile_id = profiles.id
+    WHERE profile_id IN $(friends:raw)
+    AND idea_id = $(i_id)
     `;
 
     const schedules_sql = `
@@ -184,7 +187,10 @@ function show (i_id, fb_id) {
                             .slice(0, 5));
                 var friends = get_fb_friends
                     .call(this, fb_id)
-                    .then(friends => this.any(idea_friends_sql, {friends: query_values(friends)}));
+                    .then(friends => this.any(idea_friends_sql, {
+                        friends: query_values(friends),
+                        i_id
+                    }));
                 return this.batch([ideas, mostAvaiTime, friends]);
             }
             case 1: {
