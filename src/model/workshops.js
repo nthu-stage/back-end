@@ -11,6 +11,9 @@ const {
     query_values,
 } = require('../fn.js');
 
+const Expo = require('exponent-server-sdk');
+let expo = new Expo();
+
 // none(now) -> void
 const update_unreached_sql = `
 UPDATE workshops
@@ -378,6 +381,15 @@ function attend(w_id, fb_id) {
         GROUP BY workshops.id;
     `;
 
+    // one(w_id) -> {expo_push_token}
+    const get_author_expo_push_token_sql = `
+        SELECT expo_push_token
+        FROM profiles
+        INNER JOIN proposes
+        ON proposes.profile_id = profiles.id
+        WHERE workshop_id = $(w_id)
+    `;
+
     function source(index, data, delay) {
         switch (index) {
             case 0: {
@@ -415,6 +427,31 @@ function attend(w_id, fb_id) {
                 return this.none(update_reached_sql, {attendees_number}).then(() => null);
             }
             case 5: {
+                return this.one(get_author_expo_push_token_sql, {w_id});
+            }
+            case 6: {
+                const {expo_push_token} = data;
+                try {
+                    let receipts;
+                    expo.sendPushNotificationsAsync([{
+                        to: expo_push_token,
+                        sound: 'default',
+                        body: 'This is a test notification',
+                        data: {
+                            value: '123456789'
+                        },
+                    }]).then(x => {
+                        console.log('x: '+JSON.stringify(x));
+                        receipts = x;
+                    }).catch(err => {
+                        console.log('err: '+JSON.stringify(err));
+                    });
+                } catch (error) {
+                    console.log(error);
+                }
+                return null;
+            }
+            case 7: {
                 return this.one(get_attended_sql, {w_id, p_id});
             }
         }
@@ -424,7 +461,6 @@ function attend(w_id, fb_id) {
         .then(x => { p_id = x; })
         .then(() => db.tx(t => t.sequence(source, {track: true})))
         .then(data => data.slice(-1)[0])
-        .then(workshop => adapter(workshop))
         .catch(err => { throw err.error; });
 }
 
